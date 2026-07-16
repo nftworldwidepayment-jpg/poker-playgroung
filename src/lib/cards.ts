@@ -105,6 +105,18 @@ export function evaluate7(cards: Card[]): { score: number[]; name: string } {
   return { score: best!, name: HAND_NAMES[best![0]] };
 }
 
+// Omaha rule: the final hand must use exactly 2 of the 4 hole cards + exactly 3 of the board.
+export function evaluateOmaha(hole: Card[], board: Card[]): { score: number[]; name: string } {
+  let best: number[] | null = null;
+  for (const twoHole of combinations(hole, 2)) {
+    for (const threeBoard of combinations(board, 3)) {
+      const s = scoreFive([...twoHole, ...threeBoard]);
+      if (!best || compareScores(s, best) > 0) best = s;
+    }
+  }
+  return { score: best!, name: HAND_NAMES[best![0]] };
+}
+
 export function compareHands(a: Card[], b: Card[]): number {
   return compareScores(evaluate7(a).score, evaluate7(b).score);
 }

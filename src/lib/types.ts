@@ -8,12 +8,14 @@ export type Card = `${Rank}${Suit}`;
 export type RoomStatus = "waiting" | "playing" | "finished";
 export type Phase = "waiting" | "preflop" | "flop" | "turn" | "river" | "showdown";
 export type PlayerStatus = "active" | "folded" | "all_in" | "sitting_out" | "left";
+export type GameType = "nlhe" | "plo4";
 
 export interface RoomRow {
   id: string;
   code: string;
   status: RoomStatus;
   phase: Phase;
+  game_type: GameType;
   small_blind: number;
   big_blind: number;
   dealer_seat: number | null;

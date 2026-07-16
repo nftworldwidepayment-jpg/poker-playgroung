@@ -2,6 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { PlayerRow } from "@/lib/types";
 import { PlayingCard } from "./PlayingCard";
+import { ChipStack } from "./Chip";
 
 const AVATAR_COLORS = [
   "from-fuchsia-500 to-purple-600",
@@ -37,30 +38,37 @@ export function Seat({
   const folded = player.status === "folded";
   const allIn = player.status === "all_in";
   const color = AVATAR_COLORS[player.seat % AVATAR_COLORS.length];
+  const cardCount = holeCards?.length || 2;
 
   return (
-    <div className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1" style={style}>
+    <div className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5" style={style}>
       {isDealer && (
-        <div className="absolute -top-2 -right-2 z-20 w-6 h-6 rounded-full bg-white text-[10px] font-bold text-slate-900 flex items-center justify-center shadow-md border border-amber-400">
+        <div className="absolute -top-2 -right-2 z-20 w-6 h-6 rounded-full bg-gradient-to-br from-white to-slate-200 text-[10px] font-serif font-bold text-slate-900 flex items-center justify-center shadow-[0_0_6px_rgba(0,0,0,0.4)] border-2 border-amber-400">
           D
         </div>
       )}
 
-      <div className="flex gap-0.5 mb-1 h-11">
-        {(holeCards || [undefined, undefined]).map((c, i) => (
-          <PlayingCard key={i} card={c} hidden={!showCards} size="sm" delay={i * 0.08} />
+      <div className="flex gap-0.5 mb-1 h-16">
+        {(holeCards || Array.from({ length: cardCount })).map((c, i) => (
+          <PlayingCard key={i} card={c as string | undefined} hidden={!showCards} size="sm" delay={i * 0.18} />
         ))}
       </div>
 
       <motion.div
         animate={
           isTurn
-            ? { boxShadow: ["0 0 0px rgba(250,204,21,0)", "0 0 22px rgba(250,204,21,0.9)", "0 0 0px rgba(250,204,21,0)"] }
+            ? {
+                boxShadow: [
+                  "0 0 0px rgba(250,204,21,0)",
+                  "0 0 26px rgba(250,204,21,0.85)",
+                  "0 0 0px rgba(250,204,21,0)",
+                ],
+              }
             : { boxShadow: "0 0 0px rgba(250,204,21,0)" }
         }
-        transition={{ duration: 1.1, repeat: isTurn ? Infinity : 0 }}
+        transition={{ duration: 1.8, repeat: isTurn ? Infinity : 0, ease: "easeInOut" }}
         className={`relative w-16 h-16 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-lg border-2 ${
-          isTurn ? "border-amber-300" : isYou ? "border-cyan-300" : "border-white/20"
+          isTurn ? "border-amber-300" : isYou ? "border-cyan-300/80" : "border-white/20"
         } ${folded ? "opacity-40 grayscale" : ""}`}
       >
         {player.name.slice(0, 2).toUpperCase()}
@@ -77,7 +85,7 @@ export function Seat({
               strokeDasharray={2 * Math.PI * 47}
               strokeDashoffset={2 * Math.PI * 47 * (1 - timerPct)}
               transform="rotate(-90 50 50)"
-              style={{ transition: "stroke-dashoffset 0.3s linear" }}
+              style={{ transition: "stroke-dashoffset 0.4s linear" }}
             />
           </svg>
         )}
@@ -88,15 +96,15 @@ export function Seat({
         )}
       </motion.div>
 
-      <div className="text-center leading-tight">
-        <div className={`text-xs font-semibold ${isYou ? "text-cyan-300" : "text-white"} max-w-[90px] truncate`}>
+      <div className="text-center leading-tight bg-gradient-to-b from-black/50 to-black/30 border border-amber-400/10 rounded-full px-2.5 py-0.5 backdrop-blur-sm">
+        <div className={`text-xs font-serif font-semibold ${isYou ? "text-cyan-300" : "text-amber-50/90"} max-w-[100px] truncate`}>
           {player.name} {isYou && "(tu)"}
         </div>
         <div className="text-[11px] text-amber-300 font-mono">{player.chips.toLocaleString("pt-PT")}</div>
       </div>
 
       {folded && (
-        <div className="absolute top-8 text-[10px] font-bold text-rose-400 bg-black/60 px-2 py-0.5 rounded rotate-[-8deg]">
+        <div className="absolute top-9 text-[10px] font-bold text-rose-300 bg-black/70 px-2 py-0.5 rounded rotate-[-8deg] border border-rose-500/30">
           DESISTIU
         </div>
       )}
@@ -104,12 +112,13 @@ export function Seat({
       <AnimatePresence>
         {player.current_bet > 0 && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.5, y: 10 }}
+            initial={{ opacity: 0, scale: 0.4, y: 14 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            className="absolute -bottom-7 flex items-center gap-1 bg-black/70 rounded-full px-2 py-0.5 border border-amber-400/40"
+            exit={{ opacity: 0, scale: 0.4, y: -8 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute -bottom-8 flex items-center gap-1.5 bg-black/60 rounded-full pl-1 pr-2 py-0.5 border border-amber-400/30"
           >
-            <span className="w-3 h-3 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 border border-amber-100/60" />
+            <ChipStack amount={player.current_bet} size={13} />
             <span className="text-[11px] font-mono text-amber-200">{player.current_bet}</span>
           </motion.div>
         )}

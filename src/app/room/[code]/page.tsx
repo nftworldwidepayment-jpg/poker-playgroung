@@ -6,7 +6,10 @@ import { useRoom } from "@/lib/useRoom";
 import { PokerTable } from "@/components/PokerTable";
 import { ActionBar } from "@/components/ActionBar";
 import { WinnerOverlay } from "@/components/WinnerOverlay";
+import { ToastStack, ToastItem } from "@/components/Toast";
 import { playCheck, playDeal, playFold, playTurn, playWin, setSoundEnabled } from "@/lib/sounds";
+
+let toastSeq = 0;
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
@@ -23,8 +26,16 @@ export default function RoomPage() {
   const [now, setNow] = useState(Date.now());
   const [soundOn, setSoundOn] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [showWinner, setShowWinner] = useState(false);
   const lastActionKey = useRef<string>("");
   const lastHandFetched = useRef<number>(-1);
+
+  function pushToast(message: string, tone: "error" | "info" = "error") {
+    const id = ++toastSeq;
+    setToasts((t) => [...t, { id, message, tone }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
+  }
 
   useEffect(() => {
     setSession(loadSession(code));
@@ -72,9 +83,17 @@ export default function RoomPage() {
     else if (room.last_action.action === "check") playCheck();
   }, [room?.last_action, room?.hand_number, room?.pot]);
 
+  // showdown reveal with a short cinematic suspense delay before the winner overlay appears
   useEffect(() => {
-    if (room?.phase === "showdown" && (room.winners?.length || 0) > 0) playWin();
-  }, [room?.phase, room?.winners]);
+    if (room?.phase === "showdown" && (room.winners?.length || 0) > 0) {
+      const t = setTimeout(() => {
+        setShowWinner(true);
+        playWin();
+      }, 650);
+      return () => clearTimeout(t);
+    }
+    setShowWinner(false);
+  }, [room?.phase, room?.winners, room?.hand_number]);
 
   useEffect(() => {
     if (room && you && room.current_turn_seat === you.seat) playTurn();
@@ -102,7 +121,7 @@ export default function RoomPage() {
     try {
       await api.startHand(code, session.playerId, session.token);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Erro ao iniciar");
+      pushToast(e instanceof Error ? e.message : "Erro ao iniciar");
     } finally {
       setBusy(false);
     }
@@ -114,7 +133,7 @@ export default function RoomPage() {
     try {
       await api.action(code, session.playerId, session.token, action, amount);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Ação inválida");
+      pushToast(e instanceof Error ? e.message : "Ação inválida");
     } finally {
       setBusy(false);
     }
@@ -130,6 +149,7 @@ export default function RoomPage() {
     const url = `${window.location.origin}/room/${code}`;
     navigator.clipboard?.writeText(url).then(() => {
       setCopied(true);
+      pushToast("Link copiado!", "info");
       setTimeout(() => setCopied(false), 1500);
     });
   }
@@ -189,26 +209,33 @@ export default function RoomPage() {
         className="absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(16,185,129,0.15), transparent), #04070a",
+            "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(16,185,129,0.12), transparent), #04070a",
         }}
       />
 
-      <div className="flex items-center justify-between px-4 py-3 z-20">
-        <button onClick={() => router.push("/")} className="text-white/50 hover:text-white text-sm">
+      <ToastStack toasts={toasts} />
+
+      <div className="flex items-center justify-between px-3 py-3 z-20 gap-2">
+        <button onClick={() => router.push("/")} className="text-white/50 hover:text-white text-sm shrink-0 py-1.5 px-1">
           ← Sair
         </button>
-        <button
-          onClick={copyInvite}
-          className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-sm font-mono tracking-widest hover:border-amber-400/50 transition"
-        >
-          {code} {copied ? "✓ copiado" : "📋"}
-        </button>
-        <button onClick={toggleSound} className="text-white/50 hover:text-white text-lg">
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline-block text-[10px] uppercase tracking-widest text-amber-300/60 font-serif border border-amber-400/20 rounded-full px-2 py-1">
+            {room.game_type === "plo4" ? "PLO4" : "Hold'em"}
+          </span>
+          <button
+            onClick={copyInvite}
+            className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-sm font-mono tracking-widest hover:border-amber-400/50 transition"
+          >
+            {code} {copied ? "✓" : "📋"}
+          </button>
+        </div>
+        <button onClick={toggleSound} className="text-white/50 hover:text-white text-lg shrink-0 py-1.5 px-1">
           {soundOn ? "🔊" : "🔇"}
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-2 pb-32">
+      <div className="flex-1 flex flex-col items-center justify-center px-2 pb-40">
         <PokerTable
           room={room}
           players={players}
@@ -238,7 +265,7 @@ export default function RoomPage() {
         )}
       </div>
 
-      {room.phase === "showdown" && (
+      {room.phase === "showdown" && showWinner && (
         <WinnerOverlay room={room} isHost={isHost} onNext={handleStart} busy={busy} />
       )}
 

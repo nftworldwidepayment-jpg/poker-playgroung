@@ -1,5 +1,5 @@
 import { Card, PlayerRow, RoomRow } from "./types.ts";
-import { evaluate7, freshDeck, shuffle } from "./cards.ts";
+import { evaluate7, evaluateOmaha, freshDeck, shuffle } from "./cards.ts";
 
 const TURN_SECONDS = 30;
 
@@ -89,8 +89,11 @@ export function startHand(ctx: GameCtx) {
   if (bbPlayer.chips === 0) bbPlayer.status = "all_in";
 
   const deck = shuffle(freshDeck());
+  const cardsPerPlayer = room.game_type === "plo4" ? 4 : 2;
   for (const p of eligible) {
-    ctx.holeCards[p.id] = [deck.pop()!, deck.pop()!];
+    const hand: Card[] = [];
+    for (let i = 0; i < cardsPerPlayer; i++) hand.push(deck.pop()!);
+    ctx.holeCards[p.id] = hand;
   }
 
   room.deck = deck;
@@ -152,7 +155,10 @@ function showdown(ctx: GameCtx) {
     if (eligible.length === 0) continue;
     let best: { player: PlayerRow; score: number[]; name: string } | null = null;
     const scored = eligible.map((p) => {
-      const ev = evaluate7([...(holeCards[p.id] || []), ...room.community_cards]);
+      const ev =
+        room.game_type === "plo4"
+          ? evaluateOmaha(holeCards[p.id] || [], room.community_cards)
+          : evaluate7([...(holeCards[p.id] || []), ...room.community_cards]);
       return { player: p, score: ev.score, name: ev.name };
     });
     for (const s of scored) {
@@ -278,7 +284,13 @@ export function applyAction(
     if (player.chips === 0) player.status = "all_in";
   } else if (action === "raise") {
     if (amount == null) throw new Error("Falta o valor da aposta");
-    const target = Math.min(amount, player.chips + player.current_bet);
+    let target = Math.min(amount, player.chips + player.current_bet);
+    if (room.game_type === "plo4") {
+      const toCall = room.current_bet - player.current_bet;
+      const potAfterCall = room.pot + toCall;
+      const maxTotalBet = room.current_bet + potAfterCall;
+      target = Math.min(target, maxTotalBet);
+    }
     const delta = target - player.current_bet;
     if (delta <= 0 || delta > player.chips) throw new Error("Valor de raise inválido");
     const isFullRaise = target - room.current_bet >= room.min_raise;

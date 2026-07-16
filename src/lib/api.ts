@@ -24,8 +24,8 @@ export interface Session {
 }
 
 export const api = {
-  createRoom: (name: string, smallBlind: number, bigBlind: number, buyIn: number) =>
-    call("create", { name, smallBlind, bigBlind, buyIn }) as Promise<{ code: string; playerId: string; token: string }>,
+  createRoom: (name: string, smallBlind: number, bigBlind: number, buyIn: number, gameType: string) =>
+    call("create", { name, smallBlind, bigBlind, buyIn, gameType }) as Promise<{ code: string; playerId: string; token: string }>,
   joinRoom: (code: string, name: string) =>
     call("join", { code, name }) as Promise<{ code: string; playerId: string; token: string }>,
   startHand: (code: string, playerId: string, token: string) =>

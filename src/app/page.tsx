@@ -9,6 +9,7 @@ export default function Home() {
   const [mode, setMode] = useState<"create" | "join">("create");
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [gameType, setGameType] = useState<"nlhe" | "plo4">("nlhe");
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
   const [buyIn, setBuyIn] = useState(1000);
@@ -20,7 +21,7 @@ export default function Home() {
     setLoading(true);
     setError("");
     try {
-      const res = await api.createRoom(name.trim(), smallBlind, bigBlind, buyIn);
+      const res = await api.createRoom(name.trim(), smallBlind, bigBlind, buyIn, gameType);
       saveSession({ code: res.code, playerId: res.playerId, token: res.token, name: name.trim() });
       router.push(`/room/${res.code}`);
     } catch (e) {
@@ -64,11 +65,11 @@ export default function Home() {
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <div className="text-5xl mb-2">🃏</div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-amber-300 via-amber-100 to-amber-300 bg-clip-text text-transparent">
+          <div className="text-5xl mb-2">♠️</div>
+          <h1 className="font-serif text-4xl font-black tracking-tight bg-gradient-to-r from-amber-300 via-amber-100 to-amber-300 bg-clip-text text-transparent">
             Poker Night
           </h1>
-          <p className="text-white/50 text-sm mt-1">Texas Hold&apos;em em tempo real com os teus amigos</p>
+          <p className="text-white/50 text-sm mt-1 font-serif">Texas Hold&apos;em &amp; PLO4 em tempo real com os teus amigos</p>
         </div>
 
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 shadow-2xl">
@@ -105,6 +106,34 @@ export default function Home() {
 
             {mode === "create" ? (
               <>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Variante</label>
+                  <div className="flex gap-1 bg-black/30 rounded-xl p-1">
+                    <button
+                      type="button"
+                      onClick={() => setGameType("nlhe")}
+                      className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${
+                        gameType === "nlhe" ? "bg-emerald-500 text-slate-900" : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      Texas Hold&apos;em
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGameType("plo4")}
+                      className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${
+                        gameType === "plo4" ? "bg-emerald-500 text-slate-900" : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      PLO4 (Omaha)
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-white/35 mt-1">
+                    {gameType === "plo4"
+                      ? "4 cartas na mão, usa exatamente 2 + 3 da mesa, apostas pot-limit."
+                      : "2 cartas na mão, apostas no-limit — o clássico."}
+                  </p>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-white/50 mb-1 block">Small Blind</label>

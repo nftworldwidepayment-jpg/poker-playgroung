@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
         const smallBlind = Math.max(1, Number(body.smallBlind) || 10);
         const bigBlind = Math.max(smallBlind * 2, Number(body.bigBlind) || smallBlind * 2);
         const buyIn = Math.max(bigBlind * 10, Number(body.buyIn) || 1000);
+        const gameType = body.gameType === "plo4" ? "plo4" : "nlhe";
 
         const db = admin();
         let code = genCode();
@@ -44,7 +45,7 @@ Deno.serve(async (req) => {
         }
         const { data: room, error } = await db
           .from("rooms")
-          .insert({ code, small_blind: smallBlind, big_blind: bigBlind, status: "waiting", phase: "waiting" })
+          .insert({ code, small_blind: smallBlind, big_blind: bigBlind, status: "waiting", phase: "waiting", game_type: gameType })
           .select()
           .single();
         if (error || !room) return json({ error: "Falha ao criar sala" }, 500);
