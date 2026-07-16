@@ -1,7 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { PlayerRow, RoomRow } from "@/lib/types";
+import { ChipStack } from "./Chip";
+
+const fmt = (n: number) => n.toLocaleString("pt-PT");
 
 export function ActionBar({
   room,
@@ -26,18 +29,56 @@ export function ActionBar({
 
   const clampedMin = Math.min(minRaiseTo, maxRaiseTo);
   const sliderDisabled = clampedMin >= maxRaiseTo;
+  const canRaise = !sliderDisabled && maxRaiseTo > room.current_bet;
+  const step = Math.max(1, room.big_blind);
+
   const [raiseTo, setRaiseTo] = useState(clampedMin);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setRaiseTo(clampedMin);
+    setEditing(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.hand_number, room.phase, room.current_bet]);
 
+  function clamp(v: number) {
+    return Math.min(Math.max(Math.round(v), clampedMin), maxRaiseTo);
+  }
+
+  // native (non-passive) wheel listener so preventDefault actually stops page scroll
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el || !canRaise) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setRaiseTo((v) => clamp(v + (e.deltaY < 0 ? step : -step)));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canRaise, clampedMin, maxRaiseTo, step]);
+
   const potNow = room.pot + toCall;
-  const quickBets = [
-    { label: "½ pote", value: Math.round(room.current_bet + potNow / 2) },
+  const presets = [
+    { label: "Min", value: clampedMin },
+    { label: "1/3", value: Math.round(room.current_bet + potNow / 3) },
+    { label: "1/2", value: Math.round(room.current_bet + potNow / 2) },
+    { label: "2/3", value: Math.round(room.current_bet + (potNow * 2) / 3) },
     { label: "Pote", value: Math.round(room.current_bet + potNow) },
-  ].filter((q) => q.value > clampedMin && q.value < maxRaiseTo);
+    { label: "Max", value: maxRaiseTo },
+  ]
+    .map((p) => ({ ...p, value: clamp(p.value) }))
+    .filter((p, i, arr) => arr.findIndex((x) => x.value === p.value) === i);
+
+  const pct = maxRaiseTo > clampedMin ? ((raiseTo - clampedMin) / (maxRaiseTo - clampedMin)) * 100 : 0;
+
+  function commitEdit() {
+    const n = Number(editValue.replace(/[^\d]/g, ""));
+    if (!Number.isNaN(n) && n > 0) setRaiseTo(clamp(n));
+    setEditing(false);
+  }
 
   return (
     <motion.div
@@ -47,34 +88,103 @@ export function ActionBar({
       className="fixed bottom-0 inset-x-0 z-30 bg-gradient-to-t from-black via-black/95 to-black/0 pt-12 pb-4 px-4"
     >
       <div className="max-w-xl mx-auto flex flex-col gap-3">
-        {!sliderDisabled && maxRaiseTo > room.current_bet && (
-          <div className="flex flex-col gap-2 bg-white/5 rounded-xl px-4 py-2.5 border border-white/10">
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min={clampedMin}
-                max={maxRaiseTo}
-                value={Math.min(Math.max(raiseTo, clampedMin), maxRaiseTo)}
-                onChange={(e) => setRaiseTo(Number(e.target.value))}
-                className="flex-1 accent-amber-400"
-              />
-              <span className="font-mono text-amber-300 w-16 text-right">{raiseTo}</span>
+        {canRaise && (
+          <div
+            ref={panelRef}
+            className="flex flex-col gap-3 bg-gradient-to-b from-white/[0.07] to-white/[0.03] rounded-2xl px-4 py-3 border border-amber-400/15 select-none"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">
+                Aposta{room.game_type === "plo4" ? " · pot-limit" : ""}
+              </span>
+              <span className="text-[10px] text-white/30">roda do rato para ajustar</span>
             </div>
-            {quickBets.length > 0 && (
-              <div className="flex gap-2">
-                {quickBets.map((q) => (
+
+            <div className="flex items-center gap-3">
+              <button
+                disabled={busy}
+                onClick={() => setRaiseTo((v) => clamp(v - step))}
+                className="w-9 h-9 shrink-0 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-amber-200 font-bold text-lg flex items-center justify-center active:scale-90 transition disabled:opacity-30"
+              >
+                −
+              </button>
+
+              <div className="flex-1 flex items-center justify-center gap-2">
+                <ChipStack amount={raiseTo} size={18} />
+                {editing ? (
+                  <input
+                    autoFocus
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={commitEdit}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitEdit();
+                      if (e.key === "Escape") setEditing(false);
+                    }}
+                    inputMode="numeric"
+                    className="w-28 bg-black/40 border border-amber-400/40 rounded-lg text-center font-mono text-lg text-amber-200 py-0.5 outline-none"
+                  />
+                ) : (
                   <button
-                    key={q.label}
-                    onClick={() => setRaiseTo(Math.min(q.value, maxRaiseTo))}
-                    className="flex-1 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-amber-200/80 border border-white/10 transition"
+                    onClick={() => {
+                      setEditValue(String(raiseTo));
+                      setEditing(true);
+                    }}
+                    className="font-mono text-2xl font-bold text-amber-200 tabular-nums tracking-tight hover:text-amber-100 transition"
                   >
-                    {q.label}
+                    {fmt(raiseTo)}
                   </button>
-                ))}
+                )}
               </div>
-            )}
+
+              <button
+                disabled={busy}
+                onClick={() => setRaiseTo((v) => clamp(v + step))}
+                className="w-9 h-9 shrink-0 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-amber-200 font-bold text-lg flex items-center justify-center active:scale-90 transition disabled:opacity-30"
+              >
+                +
+              </button>
+            </div>
+
+            <input
+              type="range"
+              min={clampedMin}
+              max={maxRaiseTo}
+              step={1}
+              value={raiseTo}
+              onChange={(e) => setRaiseTo(Number(e.target.value))}
+              style={{
+                background: `linear-gradient(to right, #fbbf24 ${pct}%, rgba(255,255,255,0.12) ${pct}%)`,
+              }}
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
+                [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br
+                [&::-webkit-slider-thumb]:from-amber-300 [&::-webkit-slider-thumb]:to-amber-600
+                [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-amber-100
+                [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(251,191,36,0.7)]
+                [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:rounded-full
+                [&::-moz-range-thumb]:bg-gradient-to-br [&::-moz-range-thumb]:from-amber-300 [&::-moz-range-thumb]:to-amber-600
+                [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-amber-100 [&::-moz-range-thumb]:shadow-[0_0_10px_rgba(251,191,36,0.7)]"
+            />
+
+            <div className="flex gap-1.5">
+              {presets.map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => setRaiseTo(p.value)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                    raiseTo === p.value
+                      ? "bg-amber-500/90 text-slate-900 border-amber-300"
+                      : "bg-white/5 hover:bg-white/10 text-amber-200/80 border-white/10"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
+
         <div className="flex gap-2">
           <button
             disabled={busy}
@@ -88,17 +198,22 @@ export function ActionBar({
             onClick={() => onAction(canCheck ? "check" : "call")}
             className="flex-1 py-3.5 rounded-xl bg-sky-600/90 hover:bg-sky-600 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40"
           >
-            {canCheck ? "Passar" : `Pagar ${toCall}`}
+            {canCheck ? "Passar" : `Pagar ${fmt(toCall)}`}
           </button>
-          {!sliderDisabled && maxRaiseTo > room.current_bet && (
-            <button
-              disabled={busy}
-              onClick={() => onAction("raise", Math.min(Math.max(raiseTo, clampedMin), maxRaiseTo))}
-              className="flex-1 py-3.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40"
-            >
-              Subir
-            </button>
-          )}
+          <AnimatePresence>
+            {canRaise && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                disabled={busy}
+                onClick={() => onAction("raise", clamp(raiseTo))}
+                className="flex-1 py-3.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40"
+              >
+                Subir
+              </motion.button>
+            )}
+          </AnimatePresence>
           <button
             disabled={busy}
             onClick={() => onAction("all_in")}

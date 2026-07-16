@@ -69,11 +69,16 @@ export function PlayingCard({
         >
           {Face && <Face style={{ width: "100%", height: "100%", display: "block" }} />}
         </div>
-        <div
-          className="absolute inset-0 overflow-hidden rounded-[9%] [backface-visibility:hidden] [transform:rotateY(180deg)]"
-          style={{ filter: "hue-rotate(220deg) saturate(1.4) brightness(0.85)" }}
-        >
+        <div className="absolute inset-0 overflow-hidden rounded-[9%] border border-amber-300/40 [backface-visibility:hidden] [transform:rotateY(180deg)]">
           <Back style={{ width: "100%", height: "100%", display: "block" }} />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "linear-gradient(135deg, #6d28d9 0%, #a855f7 45%, #f59e0b 100%)",
+              mixBlendMode: "color",
+            }}
+          />
+          <div className="absolute inset-0" style={{ background: "rgba(20,10,30,0.25)", mixBlendMode: "multiply" }} />
         </div>
       </motion.div>
     </motion.div>
