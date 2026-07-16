@@ -5,6 +5,10 @@ import { PlayerRow, RoomRow } from "@/lib/types";
 import { ChipStack } from "./Chip";
 
 const fmt = (n: number) => n.toLocaleString("pt-PT");
+const fmtBB = (n: number, bb: number) => {
+  const v = n / bb;
+  return `${v % 1 === 0 ? v : v.toFixed(1)}BB`;
+};
 
 export function ActionBar({
   room,
@@ -61,11 +65,11 @@ export function ActionBar({
   }, [canRaise, clampedMin, maxRaiseTo, step]);
 
   const potNow = room.pot + toCall;
-  const presets = [
-    { label: "Min", value: clampedMin },
-    { label: "1/3", value: Math.round(room.current_bet + potNow / 3) },
-    { label: "1/2", value: Math.round(room.current_bet + potNow / 2) },
-    { label: "2/3", value: Math.round(room.current_bet + (potNow * 2) / 3) },
+  const bbPresets = [2, 2.2, 2.5, 3]
+    .map((m) => clamp(room.big_blind * m))
+    .filter((v, i, arr) => arr.indexOf(v) === i && v > clampedMin - room.big_blind);
+  const potPresets = [
+    { label: "1/2 pote", value: Math.round(room.current_bet + potNow / 2) },
     { label: "Pote", value: Math.round(room.current_bet + potNow) },
     { label: "Max", value: maxRaiseTo },
   ]
@@ -91,7 +95,7 @@ export function ActionBar({
         {canRaise && (
           <div
             ref={panelRef}
-            className="flex flex-col gap-3 bg-gradient-to-b from-white/[0.07] to-white/[0.03] rounded-2xl px-4 py-3 border border-amber-400/15 select-none"
+            className="flex flex-col gap-2.5 bg-gradient-to-b from-white/[0.07] to-white/[0.03] rounded-2xl px-4 py-3 border border-amber-400/15 select-none"
           >
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">
@@ -130,9 +134,12 @@ export function ActionBar({
                       setEditValue(String(raiseTo));
                       setEditing(true);
                     }}
-                    className="font-mono text-2xl font-bold text-amber-200 tabular-nums tracking-tight hover:text-amber-100 transition"
+                    className="flex flex-col items-center hover:text-amber-100 transition"
                   >
-                    {fmt(raiseTo)}
+                    <span className="font-mono text-2xl font-bold text-amber-200 tabular-nums tracking-tight leading-none">
+                      {fmt(raiseTo)}
+                    </span>
+                    <span className="text-[10px] text-amber-300/50 font-mono">{fmtBB(raiseTo, room.big_blind)}</span>
                   </button>
                 )}
               </div>
@@ -167,8 +174,25 @@ export function ActionBar({
                 [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-amber-100 [&::-moz-range-thumb]:shadow-[0_0_10px_rgba(251,191,36,0.7)]"
             />
 
+            {bbPresets.length > 0 && (
+              <div className="flex gap-1.5">
+                {bbPresets.map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setRaiseTo(v)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition font-mono ${
+                      raiseTo === v
+                        ? "bg-amber-500/90 text-slate-900 border-amber-300"
+                        : "bg-white/5 hover:bg-white/10 text-amber-200/80 border-white/10"
+                    }`}
+                  >
+                    {fmtBB(v, room.big_blind)}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex gap-1.5">
-              {presets.map((p) => (
+              {potPresets.map((p) => (
                 <button
                   key={p.label}
                   onClick={() => setRaiseTo(p.value)}
@@ -196,9 +220,10 @@ export function ActionBar({
           <button
             disabled={busy}
             onClick={() => onAction(canCheck ? "check" : "call")}
-            className="flex-1 py-3.5 rounded-xl bg-sky-600/90 hover:bg-sky-600 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40"
+            className="flex-1 py-3 rounded-xl bg-sky-600/90 hover:bg-sky-600 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40 flex flex-col items-center justify-center leading-tight"
           >
-            {canCheck ? "Passar" : `Pagar ${fmt(toCall)}`}
+            <span>{canCheck ? "Passar" : `Pagar ${fmt(toCall)}`}</span>
+            {!canCheck && <span className="text-[10px] font-mono opacity-70">{fmtBB(toCall, room.big_blind)}</span>}
           </button>
           <AnimatePresence>
             {canRaise && (
@@ -208,9 +233,10 @@ export function ActionBar({
                 exit={{ opacity: 0, scale: 0.9 }}
                 disabled={busy}
                 onClick={() => onAction("raise", clamp(raiseTo))}
-                className="flex-1 py-3.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40"
+                className="flex-1 py-3 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40 flex flex-col items-center justify-center leading-tight"
               >
-                Subir
+                <span>Subir</span>
+                <span className="text-[10px] font-mono opacity-70">{fmtBB(raiseTo, room.big_blind)}</span>
               </motion.button>
             )}
           </AnimatePresence>
