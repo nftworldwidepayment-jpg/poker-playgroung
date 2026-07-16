@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@letele/playing-cards": "^0.1.0",
     "@supabase/supabase-js": "^2.110.7",
     "framer-motion": "^12.42.2",
     "nanoid": "^6.0.0",
