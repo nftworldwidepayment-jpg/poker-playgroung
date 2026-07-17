@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PlayerRow } from "@/lib/types";
 import { PlayingCard } from "./PlayingCard";
 import { ChipStack } from "./Chip";
+import { CountUp } from "./CountUp";
+import { useSettings } from "@/lib/settings";
 
 const AVATAR_COLORS = [
   "from-fuchsia-500 to-purple-600",
@@ -28,6 +30,7 @@ export function Seat({
   position,
   isThinking,
   equityPct,
+  bigBlind,
 }: {
   player: PlayerRow;
   isYou: boolean;
@@ -40,7 +43,9 @@ export function Seat({
   position?: string | null;
   isThinking?: boolean;
   equityPct?: number;
+  bigBlind: number;
 }) {
+  const [settings] = useSettings();
   const folded = player.status === "folded";
   const allIn = player.status === "all_in";
   const color = AVATAR_COLORS[player.seat % AVATAR_COLORS.length];
@@ -63,14 +68,15 @@ export function Seat({
         </div>
       )}
 
-      <div className={`flex gap-1 mb-1 ${isYou ? "h-28" : "h-20"}`}>
+      <div className={`flex gap-1.5 mb-1.5 ${isYou ? "h-32" : "h-20"}`}>
         {(holeCards || Array.from({ length: cardCount })).map((c, i) => (
           <PlayingCard
             key={i}
             card={c as string | undefined}
             hidden={!showCards}
-            size={isYou ? "lg" : "md"}
+            size={isYou ? "xl" : "md"}
             delay={i * 0.18}
+            highlight={isYou && showCards}
           />
         ))}
       </div>
@@ -141,7 +147,13 @@ export function Seat({
         <div className={`text-xs font-serif font-semibold ${isYou ? "text-cyan-300" : "text-amber-50/90"} max-w-[100px] truncate`}>
           {player.name} {isYou && "(tu)"}
         </div>
-        <div className="text-[11px] text-amber-300 font-mono">{player.chips.toLocaleString("pt-PT")}</div>
+        <div className="text-[11px] text-amber-300 font-mono tabular-nums">
+          {settings.bbDisplay ? (
+            <>{(player.chips / bigBlind).toFixed(1)} BB</>
+          ) : (
+            <CountUp value={player.chips} />
+          )}
+        </div>
       </div>
 
       {equityPct != null && (
@@ -170,7 +182,9 @@ export function Seat({
             className="absolute -bottom-8 flex items-center gap-1.5 bg-black/60 rounded-full pl-1 pr-2 py-0.5 border border-amber-400/30"
           >
             <ChipStack amount={player.current_bet} size={13} />
-            <span className="text-[11px] font-mono text-amber-200">{player.current_bet}</span>
+            <span className="text-[11px] font-mono text-amber-200 tabular-nums">
+              {settings.bbDisplay ? `${(player.current_bet / bigBlind).toFixed(1)}BB` : player.current_bet}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
