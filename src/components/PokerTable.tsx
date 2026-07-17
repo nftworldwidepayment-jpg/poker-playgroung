@@ -55,8 +55,11 @@ const PHASE_LABEL: Record<string, string> = {
   showdown: "Showdown",
 };
 
+// index 0 always sits at the bottom-center (angle = +90deg), wrapping clockwise from there —
+// callers pass a seat index already rotated so that "you" is index 0, keeping your own seat
+// facing the camera no matter which physical seat number you're sitting in.
 function seatPosition(index: number, total: number): React.CSSProperties {
-  const angle = (Math.PI * 2 * index) / total - Math.PI / 2;
+  const angle = (Math.PI * 2 * index) / total + Math.PI / 2;
   const rx = 44;
   const ry = 40;
   const left = 50 + rx * Math.cos(angle);
@@ -93,6 +96,7 @@ export function PokerTable({
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const total = Math.max(ordered.length, 1);
   const visibleBoard = useStaggeredBoard(room);
+  const youIdx = Math.max(0, ordered.findIndex((p) => p.id === youId));
 
   return (
     <div className="relative w-full aspect-[3/2] max-w-5xl mx-auto drop-shadow-[0_25px_60px_rgba(0,0,0,0.75)]">
@@ -160,12 +164,13 @@ export function PokerTable({
         </AnimatePresence>
       </div>
 
-      {/* seats */}
+      {/* seats — rotated so your own seat always renders at the bottom, facing you */}
       {ordered.map((p, i) => {
         const revealed = room.revealed_hands?.find((r) => r.playerId === p.id)?.cards;
         const isYou = p.id === youId;
         const isThinking =
           room.current_turn_seat === p.seat && p.status === "active" && room.phase !== "showdown";
+        const rel = (i - youIdx + total) % total;
         return (
           <Seat
             key={p.id}
@@ -173,16 +178,25 @@ export function PokerTable({
             isYou={isYou}
             isTurn={room.current_turn_seat === p.seat}
             isDealer={room.dealer_seat === p.seat}
-            holeCards={isYou ? holeCards : revealed}
-            showCards={isYou || !!revealed}
+            holeCards={revealed}
+            showCards={!!revealed}
             timerPct={timerPct}
-            style={seatPosition(i, total)}
+            style={seatPosition(rel, total)}
             position={positionLabel(p.seat, room.dealer_seat, total)}
             isThinking={isThinking}
             equityPct={room.all_in_equity?.find((e) => e.playerId === p.id)?.pct}
           />
         );
       })}
+
+      {/* your hand, always large and facing you at the bottom of the table */}
+      {holeCards.length > 0 && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-[2%] flex gap-2 z-10">
+          {holeCards.map((c, i) => (
+            <PlayingCard key={i} card={c} size="xl" delay={i * 0.15} highlight={room.phase === "showdown"} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
