@@ -58,7 +58,13 @@ export function startHand(ctx: GameCtx) {
       p.total_bet_hand = 0;
       p.has_acted = false;
     } else {
+      // busted players sitting out must not carry a stale total_bet_hand into
+      // future hands — left uncleared, computeSidePots/awardFoldWin would keep
+      // reading their old contribution as if it were part of THIS hand's pot,
+      // phantom-crediting chips to whoever it made "eligible" for a side pot.
       p.status = "sitting_out";
+      p.current_bet = 0;
+      p.total_bet_hand = 0;
     }
   }
 
@@ -158,21 +164,35 @@ export function startHand(ctx: GameCtx) {
   }
 }
 
-function computeSidePots(players: PlayerRow[]) {
+function computeSidePots(players: PlayerRow[]): {
+  pots: { amount: number; eligible: string[] }[];
+  refunds: Record<string, number>;
+} {
   const contribs = players
     .filter((p) => p.total_bet_hand > 0)
     .map((p) => ({ id: p.id, amt: p.total_bet_hand, folded: p.status === "folded" }));
   const levels = [...new Set(contribs.map((c) => c.amt))].sort((a, b) => a - b);
   const pots: { amount: number; eligible: string[] }[] = [];
+  const refunds: Record<string, number> = {};
   let prev = 0;
   for (const level of levels) {
     const contributors = contribs.filter((c) => c.amt >= level);
-    const layer = (level - prev) * contributors.length;
+    const perPlayer = level - prev;
+    const layer = perPlayer * contributors.length;
     const eligible = contributors.filter((c) => !c.folded).map((c) => c.id);
-    if (layer > 0 && eligible.length > 0) pots.push({ amount: layer, eligible });
+    if (layer > 0) {
+      if (eligible.length > 0) {
+        pots.push({ amount: layer, eligible });
+      } else {
+        // Every contributor at this level has folded (possible when a PLO4 pot-limit
+        // cap leaves someone "active" with excess chips wagered, who then folds before
+        // anyone else matches their contribution) — refund it instead of vanishing it.
+        for (const c of contributors) refunds[c.id] = (refunds[c.id] ?? 0) + perPlayer;
+      }
+    }
     prev = level;
   }
-  return pots;
+  return { pots, refunds };
 }
 
 function seatOrderAfterDealer(players: PlayerRow[], dealerSeat: number | null, inHand: PlayerRow[]): PlayerRow[] {
@@ -244,7 +264,11 @@ function finishShowdown(ctx: GameCtx, inHand: PlayerRow[]) {
 function showdown(ctx: GameCtx) {
   const { room, players } = ctx;
   const inHand = players.filter((p) => p.status === "active" || p.status === "all_in");
-  const pots = computeSidePots(players);
+  const { pots, refunds } = computeSidePots(players);
+  for (const id in refunds) {
+    const p = players.find((pl) => pl.id === id);
+    if (p) p.chips += refunds[id];
+  }
   const seatsAfterDealer = seatOrderAfterDealer(players, room.dealer_seat, inHand);
   const wins = distributeAmongWinners(ctx, pots, room.community_cards, inHand, seatsAfterDealer);
   for (const id in wins) {
@@ -258,7 +282,11 @@ function showdown(ctx: GameCtx) {
 function showdownRunItTwice(ctx: GameCtx, boards: [Card[], Card[]]) {
   const { room, players } = ctx;
   const inHand = players.filter((p) => p.status === "active" || p.status === "all_in");
-  const pots = computeSidePots(players);
+  const { pots, refunds } = computeSidePots(players);
+  for (const id in refunds) {
+    const p = players.find((pl) => pl.id === id);
+    if (p) p.chips += refunds[id];
+  }
   const seatsAfterDealer = seatOrderAfterDealer(players, room.dealer_seat, inHand);
   // each board is responsible for half of every pot (odd chip alternates to board A)
   const potsA = pots.map((p) => ({ ...p, amount: Math.ceil(p.amount / 2) }));
@@ -456,17 +484,20 @@ export function applyAction(
     }
     const delta = target - player.current_bet;
     if (delta <= 0 || delta > player.chips) throw new Error("Valor de raise inválido");
+    // A "raise" must actually raise — if the PLO4 pot cap (or the caller-supplied
+    // amount) clamps target down to no more than the current bet, this isn't a legal
+    // raise at all (it would silently behave like a same-amount call while skipping
+    // the has_acted reset below, corrupting round-completion logic for everyone else).
+    if (target <= room.current_bet) throw new Error("Valor de raise inválido");
     const isFullRaise = target - room.current_bet >= room.min_raise;
     player.chips -= delta;
     player.current_bet = target;
     player.total_bet_hand += delta;
     if (player.chips === 0) player.status = "all_in";
-    if (target > room.current_bet) {
-      if (isFullRaise) room.min_raise = target - room.current_bet;
-      room.current_bet = target;
-      for (const p of players) {
-        if (p.id !== player.id && p.status === "active") p.has_acted = false;
-      }
+    if (isFullRaise) room.min_raise = target - room.current_bet;
+    room.current_bet = target;
+    for (const p of players) {
+      if (p.id !== player.id && p.status === "active") p.has_acted = false;
     }
   } else if (action === "all_in") {
     let delta = player.chips;

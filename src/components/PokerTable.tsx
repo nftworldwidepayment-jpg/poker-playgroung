@@ -138,14 +138,30 @@ export function PokerTable({
           {PHASE_LABEL[room.phase]}
         </motion.div>
         <div className="flex gap-1 sm:gap-2">
-          {Array.from({ length: 5 }).map((_, i) =>
-            i < visibleBoard ? (
-              <PlayingCard key={i} card={room.community_cards[i]} size="lg" delay={0} />
-            ) : (
-              <CardSlot key={i} size="lg" />
-            )
-          )}
+          {Array.from({ length: 5 }).map((_, i) => {
+            if (i < visibleBoard) return <PlayingCard key={i} card={room.community_cards[i]} size="lg" delay={0} />;
+            // Rabbit hunt: after a fold-win, preview the cards that would have come —
+            // rendered ghosted directly in the remaining board slots, not just in the popup.
+            const rabbitIdx = i - room.community_cards.length;
+            const rabbitCard = room.rabbit_cards?.[rabbitIdx];
+            if (rabbitCard) {
+              return (
+                <div key={i} className="relative opacity-60 grayscale-[30%]">
+                  <PlayingCard card={rabbitCard} size="lg" delay={0} />
+                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 text-[7px] uppercase tracking-wider text-amber-200/50 whitespace-nowrap">
+                    rabbit
+                  </div>
+                </div>
+              );
+            }
+            return <CardSlot key={i} size="lg" />;
+          })}
         </div>
+        {room.rabbit_cards && room.rabbit_cards.length > 0 && (
+          <div className="text-[9px] uppercase tracking-widest text-amber-200/40 -mt-1">
+            Rabbit hunt · e se tivesse continuado?
+          </div>
+        )}
         <AnimatePresence mode="wait">
           {room.pot > 0 && (
             <motion.div

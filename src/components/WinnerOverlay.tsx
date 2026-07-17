@@ -108,19 +108,6 @@ export function WinnerOverlay({
           </div>
         )}
 
-        {room.rabbit_cards && room.rabbit_cards.length > 0 && (
-          <div className="mt-3 mb-1">
-            <div className="text-[9px] uppercase tracking-widest text-white/40 mb-1">
-              Rabbit hunt · e se tivesse continuado?
-            </div>
-            <div className="flex justify-center gap-0.5 opacity-70">
-              {room.rabbit_cards.map((c, i) => (
-                <PlayingCard key={i} card={c} size="sm" delay={0} />
-              ))}
-            </div>
-          </div>
-        )}
-
         {canShowHand && (
           <button
             onClick={onShowHand}
