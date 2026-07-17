@@ -79,7 +79,6 @@ export function PlayingCard({
   const [settings] = useSettings();
   const widthClass = SIZES[size];
   const Face = card ? (deck as Record<string, React.ComponentType<{ style?: React.CSSProperties }>>)[cardComponentKey(card)] : null;
-  const Back = deck.B1;
 
   const suit = card?.[1];
   let faceFilter: string | undefined;
@@ -109,16 +108,9 @@ export function PlayingCard({
         >
           {Face && <Face style={{ width: "100%", height: "100%", display: "block", filter: faceFilter }} />}
         </div>
-        <div className="absolute inset-0 overflow-hidden rounded-[9%] border border-amber-300/40 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-          <Back style={{ width: "100%", height: "100%", display: "block" }} />
-          <div
-            className="absolute inset-0"
-            style={{
-              background: "linear-gradient(135deg, #6d28d9 0%, #a855f7 45%, #f59e0b 100%)",
-              mixBlendMode: "color",
-            }}
-          />
-          <div className="absolute inset-0" style={{ background: "rgba(20,10,30,0.25)", mixBlendMode: "multiply" }} />
+        <div className="absolute inset-0 overflow-hidden rounded-[9%] border border-[var(--gold)]/40 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/card-back.webp" alt="" draggable={false} className="w-full h-full object-cover select-none" />
         </div>
       </motion.div>
     </motion.div>

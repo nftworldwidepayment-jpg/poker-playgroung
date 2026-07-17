@@ -68,7 +68,9 @@ export function Seat({
         </div>
       )}
 
-      <div className={`flex gap-1.5 mb-1.5 ${isYou ? "h-32" : "h-20"}`}>
+      {/* items-start (not stretch) + no fixed height: the card's own aspect-[5/7] must
+          win, or flex cross-axis stretch squashes it into whatever height happens to be here */}
+      <div className="flex gap-1.5 mb-1.5 items-start">
         {(holeCards || Array.from({ length: cardCount })).map((c, i) => (
           <PlayingCard
             key={i}
