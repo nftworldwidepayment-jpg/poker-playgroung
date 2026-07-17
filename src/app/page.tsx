@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { api, saveSession } from "@/lib/api";
+import { Splash } from "@/components/Splash";
+import { SettingsModal } from "@/components/SettingsModal";
 
 const BLIND_PRESETS = [
   { label: "10 / 20", sb: 10, bb: 20 },
@@ -97,6 +99,7 @@ export default function Home() {
   const [runItTwice, setRunItTwice] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   function applyBlindPreset(sb: number, bb: number) {
     setSmallBlind(sb);
@@ -137,6 +140,16 @@ export default function Home() {
 
   return (
     <div className="flex-1 flex items-center justify-center relative overflow-hidden px-4 py-10 sm:py-14">
+      <Splash />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <button
+        onClick={() => setSettingsOpen(true)}
+        className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white hover:border-[var(--gold)]/40 transition flex items-center justify-center"
+        title="Definições"
+        aria-label="Definições"
+      >
+        ⚙
+      </button>
       {/* layered premium background */}
       <div
         className="absolute inset-0 -z-20"

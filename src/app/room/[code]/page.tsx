@@ -8,6 +8,9 @@ import { PokerTable } from "@/components/PokerTable";
 import { ActionBar } from "@/components/ActionBar";
 import { WinnerOverlay } from "@/components/WinnerOverlay";
 import { ToastStack, ToastItem } from "@/components/Toast";
+import { SettingsModal } from "@/components/SettingsModal";
+import { useSettings } from "@/lib/settings";
+import { handStrengthLabel } from "@/lib/handStrength";
 import { playCheck, playDeal, playFold, playTurn, playWin, setSoundEnabled } from "@/lib/sounds";
 
 let toastSeq = 0;
@@ -25,7 +28,8 @@ export default function RoomPage() {
   const [holeCards, setHoleCards] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(Date.now());
-  const [soundOn, setSoundOn] = useState(true);
+  const [settings, updateSettings] = useSettings();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [showWinner, setShowWinner] = useState(false);
@@ -47,6 +51,11 @@ export default function RoomPage() {
   useEffect(() => {
     setSession(loadSession(code));
   }, [code]);
+
+  // keep the audio engine in sync with the persisted sound preference
+  useEffect(() => {
+    setSoundEnabled(settings.sound);
+  }, [settings.sound]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 250);
@@ -203,9 +212,7 @@ export default function RoomPage() {
   }
 
   function toggleSound() {
-    const next = !soundOn;
-    setSoundOn(next);
-    setSoundEnabled(next);
+    updateSettings({ sound: !settings.sound });
   }
 
   function copyInvite() {
@@ -312,7 +319,14 @@ export default function RoomPage() {
             📜
           </button>
           <button onClick={toggleSound} className="text-white/50 hover:text-white text-lg py-1.5 px-1">
-            {soundOn ? "🔊" : "🔇"}
+            {settings.sound ? "🔊" : "🔇"}
+          </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="text-white/50 hover:text-white text-lg py-1.5 px-1"
+            title="Definições"
+          >
+            ⚙
           </button>
           <AnimatePresence>
             {historyOpen && (
@@ -412,6 +426,21 @@ export default function RoomPage() {
       {yourTurn && you && room.phase !== "showdown" && (
         <ActionBar room={room} you={you} onAction={handleAction} busy={busy} />
       )}
+
+      {settings.handStrength && room.status === "playing" && holeCards.length > 0 && room.phase !== "showdown" && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-2 z-20 pointer-events-none">
+          {(() => {
+            const label = handStrengthLabel(holeCards, room.community_cards, room.game_type);
+            return label ? (
+              <div className="text-[11px] font-serif text-[var(--gold)]/90 bg-black/60 backdrop-blur rounded-full px-3 py-1 border border-[var(--gold)]/20">
+                {label}
+              </div>
+            ) : null;
+          })()}
+        </div>
+      )}
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
