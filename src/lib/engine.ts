@@ -469,12 +469,22 @@ export function applyAction(
       }
     }
   } else if (action === "all_in") {
-    const delta = player.chips;
+    let delta = player.chips;
+    if (room.game_type === "plo4") {
+      // Pot-limit: pushing your stack is only legal up to the pot-size raise cap.
+      // Anything beyond the cap stays in the stack — "all-in" in PLO means "bet the max",
+      // which is the pot, never an uncapped shove.
+      const toCall = room.current_bet - player.current_bet;
+      const maxTotalBet = room.current_bet + room.pot + toCall;
+      const maxDelta = maxTotalBet - player.current_bet;
+      if (maxDelta > 0) delta = Math.min(delta, maxDelta);
+      else delta = Math.min(player.chips, Math.max(toCall, 0));
+    }
     const target = player.current_bet + delta;
-    player.chips = 0;
+    player.chips -= delta;
     player.current_bet = target;
     player.total_bet_hand += delta;
-    player.status = "all_in";
+    if (player.chips === 0) player.status = "all_in";
     if (target > room.current_bet) {
       const isFullRaise = target - room.current_bet >= room.min_raise;
       if (isFullRaise) room.min_raise = target - room.current_bet;

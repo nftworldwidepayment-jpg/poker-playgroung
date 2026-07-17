@@ -40,14 +40,35 @@ export function ActionBar({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [confirmingRaise, setConfirmingRaise] = useState(false);
+  const [confirmingAllIn, setConfirmingAllIn] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const isPLO = room.game_type === "plo4";
 
   useEffect(() => {
     setRaiseTo(clampedMin);
     setEditing(false);
     setConfirmingRaise(false);
+    setConfirmingAllIn(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.hand_number, room.phase, room.current_bet]);
+
+  // the all-in confirm state auto-expires so it never sticks around
+  useEffect(() => {
+    if (!confirmingAllIn) return;
+    const t = setTimeout(() => setConfirmingAllIn(false), 2500);
+    return () => clearTimeout(t);
+  }, [confirmingAllIn]);
+
+  function submitAllIn() {
+    // PLO is pot-limit: "all-in" is capped server-side at the pot-size raise,
+    // so the button honestly reads "Pote" and needs no scare-confirm.
+    if (isPLO || confirmingAllIn) {
+      setConfirmingAllIn(false);
+      onAction("all_in");
+      return;
+    }
+    setConfirmingAllIn(true);
+  }
 
   function clamp(v: number) {
     return Math.min(Math.max(Math.round(v), clampedMin), maxRaiseTo);
@@ -71,13 +92,13 @@ export function ActionBar({
       if (tag === "INPUT" || tag === "TEXTAREA" || busy) return;
       if (e.key === "f" || e.key === "F") onAction("fold");
       else if (e.key === "c" || e.key === "C") onAction(canCheck ? "check" : "call");
-      else if (e.key === "a" || e.key === "A") onAction("all_in");
+      else if (e.key === "a" || e.key === "A") submitAllIn();
       else if ((e.key === "r" || e.key === "R") && canRaise) submitRaise();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, canCheck, canRaise, raiseTo, confirmingRaise]);
+  }, [busy, canCheck, canRaise, raiseTo, confirmingRaise, confirmingAllIn]);
 
   // native (non-passive) wheel listener so preventDefault actually stops page scroll
   useEffect(() => {
@@ -92,17 +113,20 @@ export function ActionBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canRaise, clampedMin, maxRaiseTo, step]);
 
+  // presets computed over the CURRENT pot including pending calls (real pot-size raise
+  // math, not naive %), fixed order per the GGPoker/Stars convention: Min → fractions → Pot
   const potNow = room.pot + toCall;
-  const bbPresets = [2, 2.2, 2.5, 3]
-    .map((m) => clamp(room.big_blind * m))
-    .filter((v, i, arr) => arr.indexOf(v) === i && v > clampedMin - room.big_blind);
-  const potPresets = [
-    { label: "1/2 pote", value: Math.round(room.current_bet + potNow / 2) },
+  const sizePresets = [
+    { label: "Min", value: clampedMin },
+    { label: "33%", value: Math.round(room.current_bet + potNow * 0.33) },
+    { label: "50%", value: Math.round(room.current_bet + potNow * 0.5) },
+    { label: "75%", value: Math.round(room.current_bet + potNow * 0.75) },
     { label: "Pote", value: Math.round(room.current_bet + potNow) },
-    { label: "Max", value: maxRaiseTo },
   ]
     .map((p) => ({ ...p, value: clamp(p.value) }))
     .filter((p, i, arr) => arr.findIndex((x) => x.value === p.value) === i);
+  const potPctOfRaise = potNow > 0 ? Math.round(((raiseTo - room.current_bet) / potNow) * 100) : 0;
+  const stackFraction = you.chips > 0 ? (raiseTo - you.current_bet) / you.chips : 0;
 
   const pct = maxRaiseTo > clampedMin ? ((raiseTo - clampedMin) / (maxRaiseTo - clampedMin)) * 100 : 0;
 
@@ -164,10 +188,12 @@ export function ActionBar({
                     }}
                     className="flex flex-col items-center hover:text-amber-100 transition"
                   >
-                    <span className="font-mono text-2xl font-bold text-amber-200 tabular-nums tracking-tight leading-none">
+                    <span className="font-mono text-2xl font-bold text-[var(--gold-bright)] tabular-nums tracking-tight leading-none">
                       {fmt(raiseTo)}
                     </span>
-                    <span className="text-[10px] text-amber-300/50 font-mono">{fmtBB(raiseTo, room.big_blind)}</span>
+                    <span className="text-[10px] text-[var(--gold)]/70 font-mono tabular-nums">
+                      {fmtBB(raiseTo, room.big_blind)} · {potPctOfRaise}% pote
+                    </span>
                   </button>
                 )}
               </div>
@@ -202,38 +228,27 @@ export function ActionBar({
                 [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-amber-100 [&::-moz-range-thumb]:shadow-[0_0_10px_rgba(251,191,36,0.7)]"
             />
 
-            {bbPresets.length > 0 && (
-              <div className="flex gap-1.5">
-                {bbPresets.map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => setRaiseTo(v)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition font-mono ${
-                      raiseTo === v
-                        ? "bg-amber-500/90 text-slate-900 border-amber-300"
-                        : "bg-white/5 hover:bg-white/10 text-amber-200/80 border-white/10"
-                    }`}
-                  >
-                    {fmtBB(v, room.big_blind)}
-                  </button>
-                ))}
-              </div>
-            )}
             <div className="flex gap-1.5">
-              {potPresets.map((p) => (
+              {sizePresets.map((p) => (
                 <button
                   key={p.label}
                   onClick={() => setRaiseTo(p.value)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                  className={`flex-1 py-1.5 rounded-full text-xs font-semibold border transition tabular-nums ${
                     raiseTo === p.value
-                      ? "bg-amber-500/90 text-slate-900 border-amber-300"
-                      : "bg-white/5 hover:bg-white/10 text-amber-200/80 border-white/10"
+                      ? "bg-[var(--gold)] text-slate-900 border-[var(--gold-bright)]"
+                      : "bg-white/5 hover:bg-white/10 text-[var(--gold)]/90 border-white/10"
                   }`}
                 >
                   {p.label}
                 </button>
               ))}
             </div>
+
+            {stackFraction > 0.5 && (
+              <div className="text-[10px] text-orange-300/80 text-center">
+                ⚠ Este sizing compromete {Math.round(stackFraction * 100)}% do teu stack
+              </div>
+            )}
           </div>
         )}
 
@@ -286,16 +301,20 @@ export function ActionBar({
                 <span>
                   Subir <span className="hidden sm:inline text-[10px] opacity-60 font-mono">(R)</span>
                 </span>
-                <span className="text-[10px] font-mono opacity-70">{fmtBB(raiseTo, room.big_blind)}</span>
+                <span className="text-[10px] font-mono opacity-80 tabular-nums">para {fmt(raiseTo)}</span>
               </motion.button>
             )}
           </AnimatePresence>
           <button
             disabled={busy}
-            onClick={() => onAction("all_in")}
-            className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:brightness-110 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40"
+            onClick={submitAllIn}
+            className={`flex-1 py-3.5 rounded-xl transition font-bold text-white shadow-lg disabled:opacity-40 active:scale-95 ${
+              confirmingAllIn
+                ? "bg-rose-600 animate-pulse"
+                : "bg-gradient-to-r from-amber-500 to-orange-600 hover:brightness-110"
+            }`}
           >
-            All-in
+            {confirmingAllIn ? "Confirmar?" : isPLO ? "Pote (máx)" : "All-in"}
           </button>
         </div>
       </div>
