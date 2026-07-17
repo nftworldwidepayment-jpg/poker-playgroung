@@ -56,6 +56,11 @@ export async function saveCtx(ctx: GameCtx) {
       last_action: room.last_action,
       winners: room.winners,
       revealed_hands: room.revealed_hands,
+      rabbit_cards: room.rabbit_cards,
+      run_it_twice_enabled: room.run_it_twice_enabled,
+      run_it_twice_boards: room.run_it_twice_boards,
+      last_hand: room.last_hand,
+      all_in_equity: room.all_in_equity,
     })
     .eq("id", room.id);
 
@@ -68,6 +73,7 @@ export async function saveCtx(ctx: GameCtx) {
         total_bet_hand: p.total_bet_hand,
         status: p.status,
         has_acted: p.has_acted,
+        auto_straddle: p.auto_straddle,
       })
       .eq("id", p.id);
   }

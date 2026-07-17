@@ -27,6 +27,7 @@ export function Seat({
   style,
   position,
   isThinking,
+  equityPct,
 }: {
   player: PlayerRow;
   isYou: boolean;
@@ -38,6 +39,7 @@ export function Seat({
   style: React.CSSProperties;
   position?: string | null;
   isThinking?: boolean;
+  equityPct?: number;
 }) {
   const folded = player.status === "folded";
   const allIn = player.status === "all_in";
@@ -141,6 +143,16 @@ export function Seat({
         </div>
         <div className="text-[11px] text-amber-300 font-mono">{player.chips.toLocaleString("pt-PT")}</div>
       </div>
+
+      {equityPct != null && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-[10px] font-mono text-cyan-300 bg-black/50 rounded-full px-2 py-0.5 border border-cyan-400/20"
+        >
+          {equityPct}%
+        </motion.div>
+      )}
 
       {folded && (
         <div className="absolute top-9 text-[10px] font-bold text-rose-300 bg-black/70 px-2 py-0.5 rounded rotate-[-8deg] border border-rose-500/30">

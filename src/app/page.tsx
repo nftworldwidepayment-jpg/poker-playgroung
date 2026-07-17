@@ -13,6 +13,7 @@ export default function Home() {
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
   const [buyIn, setBuyIn] = useState(1000);
+  const [runItTwice, setRunItTwice] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -21,7 +22,7 @@ export default function Home() {
     setLoading(true);
     setError("");
     try {
-      const res = await api.createRoom(name.trim(), smallBlind, bigBlind, buyIn, gameType);
+      const res = await api.createRoom(name.trim(), smallBlind, bigBlind, buyIn, gameType, runItTwice);
       saveSession({ code: res.code, playerId: res.playerId, token: res.token, name: name.trim() });
       router.push(`/room/${res.code}`);
     } catch (e) {
@@ -166,6 +167,17 @@ export default function Home() {
                     className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2.5 outline-none focus:border-amber-400/60"
                   />
                 </div>
+                <label className="flex items-center gap-2 bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={runItTwice}
+                    onChange={(e) => setRunItTwice(e.target.checked)}
+                    className="accent-amber-500 w-4 h-4"
+                  />
+                  <span className="text-sm text-white/70">
+                    Run It Twice <span className="text-white/35 text-xs">(divide o pote em duas mesas quando todos vão all-in)</span>
+                  </span>
+                </label>
                 {error && <div className="text-rose-400 text-sm">{error}</div>}
                 <button
                   disabled={loading}

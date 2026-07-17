@@ -1,5 +1,5 @@
 import { admin, genCode, genToken, loadCtx, saveCtx, verifyPlayer } from "./db.ts";
-import { applyAction, applyTimeout, canStartHand, startHand } from "./engine.ts";
+import { applyAction, applyTimeout, canStartHand, showHand, startHand } from "./engine.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +35,7 @@ Deno.serve(async (req) => {
         const bigBlind = Math.max(smallBlind * 2, Number(body.bigBlind) || smallBlind * 2);
         const buyIn = Math.max(bigBlind * 10, Number(body.buyIn) || 1000);
         const gameType = body.gameType === "plo4" ? "plo4" : "nlhe";
+        const runItTwiceEnabled = !!body.runItTwiceEnabled;
 
         const db = admin();
         let code = genCode();
@@ -45,7 +46,15 @@ Deno.serve(async (req) => {
         }
         const { data: room, error } = await db
           .from("rooms")
-          .insert({ code, small_blind: smallBlind, big_blind: bigBlind, status: "waiting", phase: "waiting", game_type: gameType })
+          .insert({
+            code,
+            small_blind: smallBlind,
+            big_blind: bigBlind,
+            status: "waiting",
+            phase: "waiting",
+            game_type: gameType,
+            run_it_twice_enabled: runItTwiceEnabled,
+          })
           .select()
           .single();
         if (error || !room) return json({ error: "Falha ao criar sala" }, 500);
@@ -153,6 +162,47 @@ Deno.serve(async (req) => {
           applyTimeout(ctx);
         } catch {
           return json({ ok: false });
+        }
+        await saveCtx(ctx);
+        return json({ ok: true });
+      }
+
+      case "toggle_straddle": {
+        const { playerId, token, enabled } = body as { playerId: string; token: string; enabled: boolean };
+        const db = admin();
+        const { data: player } = await db.from("players").select("room_id").eq("id", playerId).single();
+        if (!player) return json({ error: "Jogador não encontrado" }, 404);
+        const ok = await verifyPlayer(player.room_id, playerId, token);
+        if (!ok) return json({ error: "Não autorizado" }, 401);
+        await db.from("players").update({ auto_straddle: !!enabled }).eq("id", playerId);
+        return json({ ok: true });
+      }
+
+      case "toggle_run_it_twice": {
+        const code = String(body.code || "").trim().toUpperCase();
+        const { playerId, token, enabled } = body as { playerId: string; token: string; enabled: boolean };
+        const db = admin();
+        const { data: room } = await db.from("rooms").select("id").eq("code", code).single();
+        if (!room) return json({ error: "Sala não encontrada" }, 404);
+        const ok = await verifyPlayer(room.id, playerId, token);
+        if (!ok) return json({ error: "Não autorizado" }, 401);
+        const { data: player } = await db.from("players").select("is_host").eq("id", playerId).single();
+        if (!player?.is_host) return json({ error: "Só o anfitrião pode alterar isto" }, 403);
+        await db.from("rooms").update({ run_it_twice_enabled: !!enabled }).eq("id", room.id);
+        return json({ ok: true });
+      }
+
+      case "show_hand": {
+        const code = String(body.code || "").trim().toUpperCase();
+        const { playerId, token } = body as { playerId: string; token: string };
+        const ctx = await loadCtx(code);
+        if (!ctx) return json({ error: "Sala não encontrada" }, 404);
+        const ok = await verifyPlayer(ctx.room.id, playerId, token);
+        if (!ok) return json({ error: "Não autorizado" }, 401);
+        try {
+          showHand(ctx, playerId);
+        } catch (e) {
+          return json({ error: e instanceof Error ? e.message : "Não é possível mostrar a mão" }, 400);
         }
         await saveCtx(ctx);
         return json({ ok: true });

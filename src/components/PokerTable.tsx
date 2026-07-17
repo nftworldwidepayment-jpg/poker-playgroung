@@ -179,6 +179,7 @@ export function PokerTable({
             style={seatPosition(i, total)}
             position={positionLabel(p.seat, room.dealer_seat, total)}
             isThinking={isThinking}
+            equityPct={room.all_in_equity?.find((e) => e.playerId === p.id)?.pct}
           />
         );
       })}

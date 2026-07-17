@@ -10,6 +10,13 @@ export type Phase = "waiting" | "preflop" | "flop" | "turn" | "river" | "showdow
 export type PlayerStatus = "active" | "folded" | "all_in" | "sitting_out" | "left";
 export type GameType = "nlhe" | "plo4";
 
+export interface LastHandSnapshot {
+  handNumber: number;
+  board: Card[];
+  winners: { playerId: string; name: string; amount: number; hand?: string }[];
+  revealedHands: { playerId: string; cards: Card[] }[] | null;
+}
+
 export interface RoomRow {
   id: string;
   code: string;
@@ -33,6 +40,11 @@ export interface RoomRow {
   winners: { playerId: string; name: string; amount: number; hand?: string }[] | null;
   revealed_hands: { playerId: string; cards: Card[] }[] | null;
   created_at: string;
+  rabbit_cards: Card[] | null;
+  run_it_twice_enabled: boolean;
+  run_it_twice_boards: Card[][] | null;
+  last_hand: LastHandSnapshot | null;
+  all_in_equity: { playerId: string; pct: number }[] | null;
 }
 
 export interface PlayerRow {
@@ -48,6 +60,7 @@ export interface PlayerRow {
   has_acted: boolean;
   is_connected: boolean;
   created_at: string;
+  auto_straddle: boolean;
 }
 
 export type PlayerAction = "fold" | "check" | "call" | "raise" | "all_in";

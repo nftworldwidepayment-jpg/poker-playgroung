@@ -163,6 +163,33 @@ export default function RoomPage() {
     }
   }
 
+  async function handleShowHand() {
+    if (!session) return;
+    try {
+      await api.showHand(code, session.playerId, session.token);
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : "Não foi possível mostrar a mão");
+    }
+  }
+
+  async function handleToggleStraddle() {
+    if (!session || !you) return;
+    try {
+      await api.toggleStraddle(session.playerId, session.token, !you.auto_straddle);
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : "Erro ao alterar straddle");
+    }
+  }
+
+  async function handleToggleRunItTwice() {
+    if (!session || !room) return;
+    try {
+      await api.toggleRunItTwice(code, session.playerId, session.token, !room.run_it_twice_enabled);
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : "Erro ao alterar Run It Twice");
+    }
+  }
+
   async function handleAction(action: string, amount?: number) {
     if (!session) return;
     setBusy(true);
@@ -332,6 +359,30 @@ export default function RoomPage() {
               {players.length} jogador{players.length === 1 ? "" : "es"} na sala — partilha o código{" "}
               <span className="font-mono text-amber-300">{code}</span>
             </div>
+            <div className="flex items-center gap-3 text-xs">
+              {you && (
+                <label className="flex items-center gap-1.5 text-white/50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={you.auto_straddle}
+                    onChange={handleToggleStraddle}
+                    className="accent-amber-500 w-3.5 h-3.5"
+                  />
+                  Straddle automático
+                </label>
+              )}
+              {isHost && (
+                <label className="flex items-center gap-1.5 text-white/50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={room.run_it_twice_enabled}
+                    onChange={handleToggleRunItTwice}
+                    className="accent-amber-500 w-3.5 h-3.5"
+                  />
+                  Run It Twice
+                </label>
+              )}
+            </div>
             {isHost ? (
               <button
                 disabled={busy || players.length < 2}
@@ -348,7 +399,14 @@ export default function RoomPage() {
       </div>
 
       {room.phase === "showdown" && showWinner && (
-        <WinnerOverlay room={room} isHost={isHost} onNext={handleStart} busy={busy} />
+        <WinnerOverlay
+          room={room}
+          isHost={isHost}
+          onNext={handleStart}
+          busy={busy}
+          canShowHand={!!you && holeCards.length > 0 && !room.revealed_hands?.some((r) => r.playerId === you.id)}
+          onShowHand={handleShowHand}
+        />
       )}
 
       {yourTurn && you && room.phase !== "showdown" && (

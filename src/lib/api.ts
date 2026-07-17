@@ -27,8 +27,19 @@ export interface Session {
 }
 
 export const api = {
-  createRoom: (name: string, smallBlind: number, bigBlind: number, buyIn: number, gameType: string) =>
-    call("create", { name, smallBlind, bigBlind, buyIn, gameType }) as Promise<{ code: string; playerId: string; token: string }>,
+  createRoom: (
+    name: string,
+    smallBlind: number,
+    bigBlind: number,
+    buyIn: number,
+    gameType: string,
+    runItTwiceEnabled = false
+  ) =>
+    call("create", { name, smallBlind, bigBlind, buyIn, gameType, runItTwiceEnabled }) as Promise<{
+      code: string;
+      playerId: string;
+      token: string;
+    }>,
   joinRoom: (code: string, name: string) =>
     call("join", { code, name }) as Promise<{ code: string; playerId: string; token: string }>,
   startHand: (code: string, playerId: string, token: string) =>
@@ -38,6 +49,12 @@ export const api = {
   timeout: (code: string) => call("timeout", { code }) as Promise<{ ok: boolean }>,
   hand: (code: string, playerId: string, token: string) =>
     call("hand", { code, playerId, token }) as Promise<{ cards: string[] }>,
+  toggleStraddle: (playerId: string, token: string, enabled: boolean) =>
+    call("toggle_straddle", { playerId, token, enabled }) as Promise<{ ok: boolean }>,
+  toggleRunItTwice: (code: string, playerId: string, token: string, enabled: boolean) =>
+    call("toggle_run_it_twice", { code, playerId, token, enabled }) as Promise<{ ok: boolean }>,
+  showHand: (code: string, playerId: string, token: string) =>
+    call("show_hand", { code, playerId, token }) as Promise<{ ok: boolean }>,
 };
 
 const STORAGE_KEY = "poker-session";
