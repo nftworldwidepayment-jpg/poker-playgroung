@@ -6,6 +6,7 @@ import { Seat } from "./Seat";
 import { PlayingCard, CardSlot } from "./PlayingCard";
 import { ChipStack } from "./Chip";
 import { CountUp } from "./CountUp";
+import { useSettings } from "@/lib/settings";
 
 const CARD_REVEAL_MS = 650;
 
@@ -98,6 +99,7 @@ export function PokerTable({
   const total = Math.max(ordered.length, 1);
   const visibleBoard = useStaggeredBoard(room);
   const youIdx = Math.max(0, ordered.findIndex((p) => p.id === youId));
+  const [settings] = useSettings();
 
   return (
     <div className="relative w-full aspect-[3/2] max-w-5xl mx-auto drop-shadow-[0_25px_60px_rgba(0,0,0,0.75)]">
@@ -108,9 +110,12 @@ export function PokerTable({
         draggable={false}
         className="absolute inset-0 h-full w-full object-contain pointer-events-none select-none"
       />
-      {/* felt lighting: soft light pooling at the center, subtle grain, matching a real table's spotlight */}
+      {/* felt lighting: soft light pooling at the center, subtle grain, matching a real table's spotlight
+          (dimmed under "modo ambiente" for long sessions) */}
       <div
-        className="absolute inset-[8%] rounded-[45%] pointer-events-none mix-blend-soft-light opacity-70"
+        className={`absolute inset-[8%] rounded-[45%] pointer-events-none mix-blend-soft-light ${
+          settings.reducedMotion ? "opacity-35" : "opacity-70"
+        }`}
         style={{ background: "radial-gradient(ellipse 60% 55% at 50% 42%, rgba(255,246,220,0.35), transparent 70%)" }}
       />
       <div
@@ -152,11 +157,13 @@ export function PokerTable({
               className="mt-1 flex flex-col items-center gap-1"
             >
               <div className="relative flex items-center gap-2 bg-black/50 backdrop-blur px-4 py-1.5 rounded-full border border-amber-400/30">
-                <motion.div
-                  className="absolute inset-0 rounded-full border border-amber-300/40"
-                  animate={{ opacity: [0.6, 0, 0.6], scale: [1, 1.18, 1] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                />
+                {!settings.reducedMotion && (
+                  <motion.div
+                    className="absolute inset-0 rounded-full border border-amber-300/40"
+                    animate={{ opacity: [0.6, 0, 0.6], scale: [1, 1.18, 1] }}
+                    transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                )}
                 <ChipStack amount={room.pot} size={16} />
                 <CountUp value={room.pot} className="text-amber-200 font-mono font-bold tabular-nums" />
               </div>

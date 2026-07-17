@@ -37,6 +37,7 @@ export default function RoomPage() {
     { handNumber: number; board: string[]; winners: { name: string; amount: number; hand?: string }[] }[]
   >([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [preAction, setPreAction] = useState<"fold" | "check_call" | null>(null);
   const lastActionKey = useRef<string>("");
   const lastHandFetched = useRef<number>(-1);
   const lastBoardLenBeforeShowdown = useRef<number>(0);
@@ -143,6 +144,24 @@ export default function RoomPage() {
   useEffect(() => {
     if (room && you && room.current_turn_seat === you.seat) playTurn();
   }, [room?.current_turn_seat]);
+
+  // pre-actions: queued while it's someone else's turn, fired the instant it becomes yours
+  useEffect(() => {
+    if (!room || !you || !session || !preAction) return;
+    if (room.current_turn_seat !== you.seat || you.status !== "active" || room.phase === "showdown") return;
+    const action = preAction;
+    setPreAction(null);
+    const toCall = room.current_bet - you.current_bet;
+    api
+      .action(code, session.playerId, session.token, action === "check_call" ? (toCall > 0 ? "call" : "check") : "fold")
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.current_turn_seat, room?.phase]);
+
+  // clear any queued pre-action once the hand actually moves on
+  useEffect(() => {
+    setPreAction(null);
+  }, [room?.hand_number, room?.phase]);
 
   async function handleJoin() {
     if (!joinName.trim()) return setJoinError("Escreve o teu nome");
@@ -425,6 +444,29 @@ export default function RoomPage() {
 
       {yourTurn && you && room.phase !== "showdown" && (
         <ActionBar room={room} you={you} onAction={handleAction} busy={busy} />
+      )}
+
+      {!yourTurn && you && you.status === "active" && room.status === "playing" && room.phase !== "showdown" && (
+        <div className="fixed bottom-4 inset-x-0 z-20 flex justify-center px-4">
+          <div className="flex gap-2 bg-black/70 backdrop-blur border border-white/10 rounded-full px-2 py-2">
+            <button
+              onClick={() => setPreAction((p) => (p === "fold" ? null : "fold"))}
+              className={`px-4 py-2 rounded-full text-xs font-semibold transition ${
+                preAction === "fold" ? "bg-rose-600 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"
+              }`}
+            >
+              {preAction === "fold" ? "✓ Vou desistir" : "Desistir (pré-ação)"}
+            </button>
+            <button
+              onClick={() => setPreAction((p) => (p === "check_call" ? null : "check_call"))}
+              className={`px-4 py-2 rounded-full text-xs font-semibold transition ${
+                preAction === "check_call" ? "bg-sky-600 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"
+              }`}
+            >
+              {preAction === "check_call" ? "✓ Vou pagar/passar" : "Passar/Pagar (pré-ação)"}
+            </button>
+          </div>
+        </div>
       )}
 
       {settings.handStrength && room.status === "playing" && holeCards.length > 0 && room.phase !== "showdown" && (

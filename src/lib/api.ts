@@ -24,6 +24,7 @@ export interface Session {
   playerId: string;
   token: string;
   name: string;
+  savedAt?: number;
 }
 
 export const api = {
@@ -60,13 +61,32 @@ export const api = {
 const STORAGE_KEY = "poker-session";
 
 export function saveSession(s: Session) {
-  localStorage.setItem(STORAGE_KEY + ":" + s.code, JSON.stringify(s));
+  localStorage.setItem(STORAGE_KEY + ":" + s.code, JSON.stringify({ ...s, savedAt: Date.now() }));
 }
 
 export function loadSession(code: string): Session | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY + ":" + code.toUpperCase());
     return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Most recently joined/created room, across all rooms this browser has ever
+// been in — powers the "Voltar à mesa" card on the lobby.
+export function loadLatestSession(): Session | null {
+  try {
+    let best: Session | null = null;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(STORAGE_KEY + ":")) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const s: Session = JSON.parse(raw);
+      if (!best || (s.savedAt || 0) > (best.savedAt || 0)) best = s;
+    }
+    return best;
   } catch {
     return null;
   }

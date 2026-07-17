@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { api, saveSession } from "@/lib/api";
+import { api, saveSession, loadLatestSession, Session } from "@/lib/api";
 import { Splash } from "@/components/Splash";
 import { SettingsModal } from "@/components/SettingsModal";
 
@@ -100,6 +100,11 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [lastSession, setLastSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    setLastSession(loadLatestSession());
+  }, []);
 
   function applyBlindPreset(sb: number, bb: number) {
     setSmallBlind(sb);
@@ -205,6 +210,24 @@ export default function Home() {
             Texas Hold&apos;em &amp; PLO4 em tempo real — a tua mesa, os teus amigos, em qualquer lugar.
           </p>
         </div>
+
+        {lastSession && (
+          <motion.button
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => router.push(`/room/${lastSession.code}`)}
+            className="w-full mb-4 flex items-center justify-between gap-3 bg-emerald-400/[0.08] hover:bg-emerald-400/[0.14] border border-emerald-400/25 rounded-2xl px-4 py-3 transition text-left"
+          >
+            <span className="flex items-center gap-2.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span>
+                <span className="block text-sm font-semibold text-emerald-200">Voltar à mesa</span>
+                <span className="block text-[11px] text-white/40 font-mono tracking-widest">{lastSession.code}</span>
+              </span>
+            </span>
+            <span className="text-emerald-300/70 text-sm">→</span>
+          </motion.button>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}

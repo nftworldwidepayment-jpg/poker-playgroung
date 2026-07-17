@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { RoomRow } from "@/lib/types";
 import { PlayingCard } from "./PlayingCard";
+import { useSettings } from "@/lib/settings";
 
 interface Confetto {
   x: number;
@@ -39,10 +40,15 @@ export function WinnerOverlay({
   canShowHand?: boolean;
   onShowHand?: () => void;
 }) {
+  const [settings] = useSettings();
   const winners = room.winners || [];
   const [confetti, setConfetti] = useState<Confetto[]>([]);
 
   useEffect(() => {
+    if (settings.reducedMotion) {
+      setConfetti([]);
+      return;
+    }
     setConfetti(
       Array.from({ length: 40 }).map(() => ({
         x: Math.random() * 100,
@@ -51,7 +57,8 @@ export function WinnerOverlay({
         delay: Math.random() * 0.6,
       }))
     );
-  }, [room.hand_number]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.hand_number, settings.reducedMotion]);
 
   if (winners.length === 0) return null;
 
