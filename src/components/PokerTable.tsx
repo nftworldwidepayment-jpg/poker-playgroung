@@ -62,7 +62,7 @@ const PHASE_LABEL: Record<string, string> = {
 // facing the camera no matter which physical seat number you're sitting in.
 function seatPosition(index: number, total: number): React.CSSProperties {
   const angle = (Math.PI * 2 * index) / total + Math.PI / 2;
-  const rx = 44;
+  const rx = 40;
   const ry = 40;
   const left = 50 + rx * Math.cos(angle);
   const top = 50 + ry * Math.sin(angle);
@@ -137,7 +137,7 @@ export function PokerTable({
         >
           {PHASE_LABEL[room.phase]}
         </motion.div>
-        <div className="flex gap-2">
+        <div className="flex gap-1 sm:gap-2">
           {Array.from({ length: 5 }).map((_, i) =>
             i < visibleBoard ? (
               <PlayingCard key={i} card={room.community_cards[i]} size="lg" delay={0} />

@@ -11,7 +11,7 @@ import { ToastStack, ToastItem } from "@/components/Toast";
 import { SettingsModal } from "@/components/SettingsModal";
 import { useSettings } from "@/lib/settings";
 import { handStrengthLabel } from "@/lib/handStrength";
-import { playCheck, playDeal, playFold, playTurn, playWin, setSoundEnabled } from "@/lib/sounds";
+import { playCheck, playChip, playDeal, playFold, playTurn, playWin, playYourAction, setSoundEnabled } from "@/lib/sounds";
 
 let toastSeq = 0;
 
@@ -98,6 +98,7 @@ export default function RoomPage() {
     lastActionKey.current = key;
     if (room.last_action.action === "fold") playFold();
     else if (room.last_action.action === "check") playCheck();
+    else if (["call", "raise", "all_in"].includes(room.last_action.action)) playChip();
   }, [room?.last_action, room?.hand_number, room?.pot]);
 
   // track the board length right up until showdown, so we know how many
@@ -221,6 +222,7 @@ export default function RoomPage() {
   async function handleAction(action: string, amount?: number) {
     if (!session) return;
     setBusy(true);
+    playYourAction();
     try {
       await api.action(code, session.playerId, session.token, action, amount);
     } catch (e) {

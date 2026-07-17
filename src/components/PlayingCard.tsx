@@ -56,11 +56,14 @@ function cardComponentKey(card: string): string {
   return `${SUIT_KEY[suit]}${RANK_KEY[rank]}`;
 }
 
+// Smaller by default, full size from the sm breakpoint (640px) up — on a narrow
+// phone in portrait, opponent seats sit close enough to the table's sides that
+// full-size fixed-width cards were spilling past the felt image's own edges.
 const SIZES = {
-  sm: "w-14",
-  md: "w-20",
-  lg: "w-28",
-  xl: "w-32",
+  sm: "w-10 sm:w-14",
+  md: "w-14 sm:w-20",
+  lg: "w-16 sm:w-28",
+  xl: "w-24 sm:w-32",
 } as const;
 
 export function PlayingCard({
