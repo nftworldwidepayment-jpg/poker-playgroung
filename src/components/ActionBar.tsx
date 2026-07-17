@@ -39,17 +39,45 @@ export function ActionBar({
   const [raiseTo, setRaiseTo] = useState(clampedMin);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
+  const [confirmingRaise, setConfirmingRaise] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setRaiseTo(clampedMin);
     setEditing(false);
+    setConfirmingRaise(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.hand_number, room.phase, room.current_bet]);
 
   function clamp(v: number) {
     return Math.min(Math.max(Math.round(v), clampedMin), maxRaiseTo);
   }
+
+  const isBigRaise = canRaise && (raiseTo >= maxRaiseTo || raiseTo - room.current_bet >= you.chips * 0.5);
+
+  function submitRaise() {
+    if (isBigRaise && !confirmingRaise) {
+      setConfirmingRaise(true);
+      return;
+    }
+    setConfirmingRaise(false);
+    onAction("raise", clamp(raiseTo));
+  }
+
+  // keyboard shortcuts: F=fold, C=check/call, R=confirm raise at current slider value, A=all-in
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || busy) return;
+      if (e.key === "f" || e.key === "F") onAction("fold");
+      else if (e.key === "c" || e.key === "C") onAction(canCheck ? "check" : "call");
+      else if (e.key === "a" || e.key === "A") onAction("all_in");
+      else if ((e.key === "r" || e.key === "R") && canRaise) submitRaise();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, canCheck, canRaise, raiseTo, confirmingRaise]);
 
   // native (non-passive) wheel listener so preventDefault actually stops page scroll
   useEffect(() => {
@@ -209,20 +237,40 @@ export function ActionBar({
           </div>
         )}
 
+        {confirmingRaise && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between bg-emerald-950/60 border border-emerald-400/30 rounded-xl px-3 py-2 text-xs"
+          >
+            <span className="text-emerald-200">Confirmar subida para {fmt(raiseTo)}?</span>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmingRaise(false)} className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white/70">
+                Cancelar
+              </button>
+              <button onClick={submitRaise} className="px-2.5 py-1 rounded-lg bg-emerald-500 text-slate-900 font-bold hover:bg-emerald-400">
+                Confirmar
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         <div className="flex gap-2">
           <button
             disabled={busy}
             onClick={() => onAction("fold")}
             className="flex-1 py-3.5 rounded-xl bg-rose-600/90 hover:bg-rose-600 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40"
           >
-            Desistir
+            Desistir <span className="hidden sm:inline text-[10px] opacity-60 font-mono">(F)</span>
           </button>
           <button
             disabled={busy}
             onClick={() => onAction(canCheck ? "check" : "call")}
             className="flex-1 py-3 rounded-xl bg-sky-600/90 hover:bg-sky-600 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40 flex flex-col items-center justify-center leading-tight"
           >
-            <span>{canCheck ? "Passar" : `Pagar ${fmt(toCall)}`}</span>
+            <span>
+              {canCheck ? "Passar" : `Pagar ${fmt(toCall)}`} <span className="hidden sm:inline text-[10px] opacity-60 font-mono">(C)</span>
+            </span>
             {!canCheck && <span className="text-[10px] font-mono opacity-70">{fmtBB(toCall, room.big_blind)}</span>}
           </button>
           <AnimatePresence>
@@ -232,10 +280,12 @@ export function ActionBar({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 disabled={busy}
-                onClick={() => onAction("raise", clamp(raiseTo))}
+                onClick={submitRaise}
                 className="flex-1 py-3 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 active:scale-95 transition font-bold text-white shadow-lg disabled:opacity-40 flex flex-col items-center justify-center leading-tight"
               >
-                <span>Subir</span>
+                <span>
+                  Subir <span className="hidden sm:inline text-[10px] opacity-60 font-mono">(R)</span>
+                </span>
                 <span className="text-[10px] font-mono opacity-70">{fmtBB(raiseTo, room.big_blind)}</span>
               </motion.button>
             )}

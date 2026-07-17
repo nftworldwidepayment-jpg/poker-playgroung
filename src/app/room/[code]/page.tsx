@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 import { api, loadSession, saveSession, Session } from "@/lib/api";
 import { useRoom } from "@/lib/useRoom";
@@ -28,8 +29,14 @@ export default function RoomPage() {
   const [copied, setCopied] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [showWinner, setShowWinner] = useState(false);
+  const [handHistory, setHandHistory] = useState<
+    { handNumber: number; board: string[]; winners: { name: string; amount: number; hand?: string }[] }[]
+  >([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const lastActionKey = useRef<string>("");
   const lastHandFetched = useRef<number>(-1);
+  const lastBoardLenBeforeShowdown = useRef<number>(0);
+  const lastLoggedHand = useRef<number>(-1);
 
   function pushToast(message: string, tone: "error" | "info" = "error") {
     const id = ++toastSeq;
@@ -83,17 +90,46 @@ export default function RoomPage() {
     else if (room.last_action.action === "check") playCheck();
   }, [room?.last_action, room?.hand_number, room?.pot]);
 
-  // showdown reveal with a short cinematic suspense delay before the winner overlay appears
+  // track the board length right up until showdown, so we know how many
+  // community cards still need to flip open (an all-in run-out can resolve
+  // flop+turn+river in one server update, so this can jump by more than one)
+  useEffect(() => {
+    if (room && room.phase !== "showdown") {
+      lastBoardLenBeforeShowdown.current = room.community_cards.length;
+    }
+  }, [room?.phase, room?.community_cards.length]);
+
+  // showdown reveal: wait for the board to finish flipping (matching
+  // PokerTable's staggered reveal pace) before popping the winner overlay
   useEffect(() => {
     if (room?.phase === "showdown" && (room.winners?.length || 0) > 0) {
+      const cardsStillFlipping = Math.max(0, room.community_cards.length - lastBoardLenBeforeShowdown.current);
+      const delay = 500 + cardsStillFlipping * 650 + 400;
       const t = setTimeout(() => {
         setShowWinner(true);
         playWin();
-      }, 650);
+      }, delay);
       return () => clearTimeout(t);
     }
     setShowWinner(false);
   }, [room?.phase, room?.winners, room?.hand_number]);
+
+  // keep a small client-side log of recent finished hands for the history popover
+  useEffect(() => {
+    if (!room || room.phase !== "showdown" || !room.winners?.length) return;
+    if (lastLoggedHand.current === room.hand_number) return;
+    lastLoggedHand.current = room.hand_number;
+    setHandHistory((h) =>
+      [
+        {
+          handNumber: room.hand_number,
+          board: room.community_cards,
+          winners: room.winners!.map((w) => ({ name: w.name, amount: w.amount, hand: w.hand })),
+        },
+        ...h,
+      ].slice(0, 5)
+    );
+  }, [room?.phase, room?.winners, room?.hand_number, room?.community_cards]);
 
   useEffect(() => {
     if (room && you && room.current_turn_seat === you.seat) playTurn();
@@ -159,7 +195,16 @@ export default function RoomPage() {
     : 0;
 
   if (loading) {
-    return <div className="flex-1 flex items-center justify-center text-white/50">A carregar mesa...</div>;
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/50">
+        <div className="relative w-14 h-14">
+          <div className="absolute inset-0 rounded-full border-2 border-amber-400/15" />
+          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-amber-400 animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center text-lg">🃏</div>
+        </div>
+        <div className="text-sm font-serif tracking-wide">A carregar mesa...</div>
+      </div>
+    );
   }
 
   if (!room) {
@@ -230,9 +275,46 @@ export default function RoomPage() {
             {code} {copied ? "✓" : "📋"}
           </button>
         </div>
-        <button onClick={toggleSound} className="text-white/50 hover:text-white text-lg shrink-0 py-1.5 px-1">
-          {soundOn ? "🔊" : "🔇"}
-        </button>
+        <div className="flex items-center gap-1 shrink-0 relative">
+          <button
+            onClick={() => setHistoryOpen((v) => !v)}
+            disabled={handHistory.length === 0}
+            className="text-white/50 hover:text-white text-lg py-1.5 px-1 disabled:opacity-30"
+            title="Histórico de mãos"
+          >
+            📜
+          </button>
+          <button onClick={toggleSound} className="text-white/50 hover:text-white text-lg py-1.5 px-1">
+            {soundOn ? "🔊" : "🔇"}
+          </button>
+          <AnimatePresence>
+            {historyOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                className="absolute top-10 right-0 z-30 w-64 bg-slate-900/95 backdrop-blur border border-amber-400/20 rounded-xl p-3 shadow-2xl"
+              >
+                <div className="text-[10px] uppercase tracking-widest text-amber-300/60 font-semibold mb-2">
+                  Últimas mãos
+                </div>
+                <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+                  {handHistory.map((h) => (
+                    <div key={h.handNumber} className="text-xs border-b border-white/5 pb-2 last:border-0">
+                      <div className="text-white/40 font-mono mb-0.5">Mão #{h.handNumber}</div>
+                      {h.winners.map((w, i) => (
+                        <div key={i} className="text-amber-200">
+                          {w.name} +{w.amount.toLocaleString("pt-PT")}
+                          {w.hand && <span className="text-white/40"> · {w.hand}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-2 pb-40">

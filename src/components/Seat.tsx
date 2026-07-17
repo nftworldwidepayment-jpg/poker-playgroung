@@ -25,6 +25,8 @@ export function Seat({
   showCards,
   timerPct,
   style,
+  position,
+  isThinking,
 }: {
   player: PlayerRow;
   isYou: boolean;
@@ -34,6 +36,8 @@ export function Seat({
   showCards: boolean;
   timerPct: number;
   style: React.CSSProperties;
+  position?: string | null;
+  isThinking?: boolean;
 }) {
   const folded = player.status === "folded";
   const allIn = player.status === "all_in";
@@ -43,14 +47,29 @@ export function Seat({
   return (
     <div className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5" style={style}>
       {isDealer && (
-        <div className="absolute -top-2 -right-2 z-20 w-6 h-6 rounded-full bg-gradient-to-br from-white to-slate-200 text-[10px] font-serif font-bold text-slate-900 flex items-center justify-center shadow-[0_0_6px_rgba(0,0,0,0.4)] border-2 border-amber-400">
+        <motion.div
+          layoutId="dealer-button"
+          transition={{ type: "spring", stiffness: 260, damping: 24 }}
+          className="absolute -top-2 -right-2 z-20 w-6 h-6 rounded-full bg-gradient-to-br from-white to-slate-200 text-[10px] font-serif font-bold text-slate-900 flex items-center justify-center shadow-[0_0_6px_rgba(0,0,0,0.4)] border-2 border-amber-400"
+        >
           D
+        </motion.div>
+      )}
+      {position && (
+        <div className="absolute -top-2 -left-2 z-20 text-[9px] font-mono font-bold tracking-wide text-slate-900 bg-amber-200/90 rounded-full px-1.5 py-0.5 shadow">
+          {position}
         </div>
       )}
 
-      <div className="flex gap-0.5 mb-1 h-16">
+      <div className={`flex gap-1 mb-1 ${isYou ? "h-28" : "h-20"}`}>
         {(holeCards || Array.from({ length: cardCount })).map((c, i) => (
-          <PlayingCard key={i} card={c as string | undefined} hidden={!showCards} size="sm" delay={i * 0.18} />
+          <PlayingCard
+            key={i}
+            card={c as string | undefined}
+            hidden={!showCards}
+            size={isYou ? "lg" : "md"}
+            delay={i * 0.18}
+          />
         ))}
       </div>
 
@@ -95,6 +114,26 @@ export function Seat({
           </span>
         )}
       </motion.div>
+
+      <AnimatePresence>
+        {isThinking && !isYou && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.6, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.6 }}
+            className="absolute -top-6 flex items-center gap-0.5 bg-black/70 rounded-full px-2 py-1 border border-white/10"
+          >
+            {[0, 1, 2].map((i) => (
+              <motion.span
+                key={i}
+                className="w-1 h-1 rounded-full bg-amber-300"
+                animate={{ y: [0, -3, 0] }}
+                transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="text-center leading-tight bg-gradient-to-b from-black/50 to-black/30 border border-amber-400/10 rounded-full px-2.5 py-0.5 backdrop-blur-sm">
         <div className={`text-xs font-serif font-semibold ${isYou ? "text-cyan-300" : "text-amber-50/90"} max-w-[100px] truncate`}>

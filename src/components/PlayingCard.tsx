@@ -26,9 +26,10 @@ function cardComponentKey(card: string): string {
 }
 
 const SIZES = {
-  sm: "w-11",
-  md: "w-16",
-  lg: "w-24",
+  sm: "w-14",
+  md: "w-20",
+  lg: "w-28",
+  xl: "w-32",
 } as const;
 
 export function PlayingCard({
@@ -40,7 +41,7 @@ export function PlayingCard({
 }: {
   card?: string;
   hidden?: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   delay?: number;
   highlight?: boolean;
 }) {
@@ -85,7 +86,7 @@ export function PlayingCard({
   );
 }
 
-export function CardSlot({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+export function CardSlot({ size = "md" }: { size?: "sm" | "md" | "lg" | "xl" }) {
   const widthClass = SIZES[size];
   return <div className={`${widthClass} aspect-[5/7] rounded-[9%] border border-dashed border-amber-200/15 bg-white/[0.03]`} />;
 }
