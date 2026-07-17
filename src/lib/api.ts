@@ -1,5 +1,8 @@
-const FN_URL = process.env.NEXT_PUBLIC_POKER_FN_URL!;
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Public Supabase project values — see src/lib/supabaseClient.ts for why these are hardcoded fallbacks.
+const FN_URL = process.env.NEXT_PUBLIC_POKER_FN_URL || "https://vsfmljbrqymbymiiyptx.supabase.co/functions/v1/poker";
+const ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzZm1samJycXltYnltaWl5cHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMzA0MzAsImV4cCI6MjA5OTgwNjQzMH0.3pyxF8gQMfKPQTDks91U_YplMkUWyiVN7wAuU_LzTWw";
 
 async function call(op: string, body: Record<string, unknown> = {}) {
   const res = await fetch(FN_URL, {
