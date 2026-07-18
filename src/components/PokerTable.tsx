@@ -89,6 +89,9 @@ export function PokerTable({
   holeCards,
   timerPct,
   connectedIds,
+  noteDots,
+  noteTitles,
+  onNoteClick,
 }: {
   room: RoomRow;
   players: PlayerRow[];
@@ -96,6 +99,9 @@ export function PokerTable({
   holeCards: string[];
   timerPct: number;
   connectedIds?: Set<string>;
+  noteDots?: Record<string, string>;
+  noteTitles?: Record<string, string>;
+  onNoteClick?: (playerId: string) => void;
 }) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const total = Math.max(ordered.length, 1);
@@ -234,6 +240,9 @@ export function PokerTable({
             equityPct={room.all_in_equity?.find((e) => e.playerId === p.id)?.pct}
             bigBlind={room.big_blind}
             isDisconnected={!!connectedIds && connectedIds.size > 0 && p.status !== "left" && !connectedIds.has(p.id)}
+            noteDotColor={noteDots?.[p.id]}
+            noteTitle={noteTitles?.[p.id]}
+            onNoteClick={onNoteClick ? () => onNoteClick(p.id) : undefined}
           />
         );
       })}

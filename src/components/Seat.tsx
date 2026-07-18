@@ -32,6 +32,9 @@ export function Seat({
   equityPct,
   bigBlind,
   isDisconnected,
+  noteDotColor,
+  noteTitle,
+  onNoteClick,
 }: {
   player: PlayerRow;
   isYou: boolean;
@@ -46,6 +49,9 @@ export function Seat({
   equityPct?: number;
   bigBlind: number;
   isDisconnected?: boolean;
+  noteDotColor?: string | null;
+  noteTitle?: string | null;
+  onNoteClick?: () => void;
 }) {
   const [settings] = useSettings();
   const folded = player.status === "folded";
@@ -158,8 +164,15 @@ export function Seat({
         )}
       </AnimatePresence>
 
-      <div className="text-center leading-tight bg-gradient-to-b from-black/50 to-black/30 border border-amber-400/10 rounded-full px-2.5 py-0.5 backdrop-blur-sm">
-        <div className={`text-xs font-serif font-semibold ${isYou ? "text-cyan-300" : "text-amber-50/90"} max-w-[100px] truncate`}>
+      <div
+        onClick={!isYou ? onNoteClick : undefined}
+        className={`text-center leading-tight bg-gradient-to-b from-black/50 to-black/30 border border-amber-400/10 rounded-full px-2.5 py-0.5 backdrop-blur-sm ${
+          !isYou && onNoteClick ? "cursor-pointer hover:border-amber-400/30" : ""
+        }`}
+        title={!isYou ? noteTitle || "Clica para adicionar uma nota privada" : undefined}
+      >
+        <div className={`text-xs font-serif font-semibold ${isYou ? "text-cyan-300" : "text-amber-50/90"} max-w-[100px] truncate flex items-center justify-center gap-1`}>
+          {noteDotColor && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${noteDotColor}`} />}
           {player.name} {isYou && "(tu)"}
         </div>
         <div className="text-[11px] text-amber-300 font-mono tabular-nums">

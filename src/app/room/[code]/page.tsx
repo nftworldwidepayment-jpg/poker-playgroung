@@ -9,8 +9,10 @@ import { ActionBar } from "@/components/ActionBar";
 import { WinnerOverlay } from "@/components/WinnerOverlay";
 import { ToastStack, ToastItem } from "@/components/Toast";
 import { SettingsModal } from "@/components/SettingsModal";
+import { PlayerNoteEditor } from "@/components/PlayerNoteEditor";
 import { useSettings } from "@/lib/settings";
 import { handStrengthLabel } from "@/lib/handStrength";
+import { loadNotes, saveNote, PlayerNote, TAG_META } from "@/lib/notes";
 import { playCheck, playChip, playDeal, playFold, playTurn, playWin, playYourAction, setSoundEnabled } from "@/lib/sounds";
 
 let toastSeq = 0;
@@ -41,6 +43,8 @@ export default function RoomPage() {
   const [biggestPot, setBiggestPot] = useState(0);
   const [initialChips, setInitialChips] = useState<Record<string, number>>({});
   const [preAction, setPreAction] = useState<"fold" | "check_call" | null>(null);
+  const [notes, setNotes] = useState<Record<string, PlayerNote>>({});
+  const [editingNoteFor, setEditingNoteFor] = useState<string | null>(null);
   const lastActionKey = useRef<string>("");
   const lastHandFetched = useRef<number>(-1);
   const lastBoardLenBeforeShowdown = useRef<number>(0);
@@ -55,7 +59,13 @@ export default function RoomPage() {
 
   useEffect(() => {
     setSession(loadSession(code));
+    setNotes(loadNotes(code));
   }, [code]);
+
+  function handleNoteChange(playerId: string, note: PlayerNote) {
+    setNotes((n) => ({ ...n, [playerId]: note }));
+    saveNote(code, playerId, note);
+  }
 
   // keep the audio engine in sync with the persisted sound preference
   useEffect(() => {
@@ -487,6 +497,17 @@ export default function RoomPage() {
           holeCards={room.status === "playing" ? holeCards : []}
           timerPct={timerPct}
           connectedIds={connectedIds}
+          noteDots={Object.fromEntries(
+            Object.entries(notes)
+              .filter(([, n]) => n.tag !== "none")
+              .map(([id, n]) => [id, TAG_META[n.tag].dot])
+          )}
+          noteTitles={Object.fromEntries(
+            Object.entries(notes)
+              .filter(([, n]) => n.text.trim())
+              .map(([id, n]) => [id, n.text])
+          )}
+          onNoteClick={setEditingNoteFor}
         />
 
         {room.status === "waiting" && (
@@ -600,6 +621,21 @@ export default function RoomPage() {
       )}
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {editingNoteFor &&
+        (() => {
+          const target = players.find((p) => p.id === editingNoteFor);
+          if (!target) return null;
+          const note = notes[editingNoteFor] || { tag: "none" as const, text: "" };
+          return (
+            <PlayerNoteEditor
+              playerName={target.name}
+              note={note}
+              onChange={(n) => handleNoteChange(editingNoteFor, n)}
+              onClose={() => setEditingNoteFor(null)}
+            />
+          );
+        })()}
     </div>
   );
 }
