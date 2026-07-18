@@ -178,6 +178,19 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
+      case "toggle_sit_out": {
+        const { playerId, token, enabled } = body as { playerId: string; token: string; enabled: boolean };
+        const db = admin();
+        const { data: player } = await db.from("players").select("room_id").eq("id", playerId).single();
+        if (!player) return json({ error: "Jogador não encontrado" }, 404);
+        const ok = await verifyPlayer(player.room_id, playerId, token);
+        if (!ok) return json({ error: "Não autorizado" }, 401);
+        // Only affects the NEXT hand's dealing — doesn't touch the player's status
+        // mid-hand, so it never forces a fold or interrupts a hand in progress.
+        await db.from("players").update({ wants_sit_out: !!enabled }).eq("id", playerId);
+        return json({ ok: true });
+      }
+
       case "toggle_run_it_twice": {
         const code = String(body.code || "").trim().toUpperCase();
         const { playerId, token, enabled } = body as { playerId: string; token: string; enabled: boolean };

@@ -31,7 +31,7 @@ function nextSeat(
 }
 
 export function canStartHand(players: PlayerRow[]): boolean {
-  return players.filter((p) => p.status !== "left" && p.chips > 0).length >= 2;
+  return players.filter((p) => p.status !== "left" && p.chips > 0 && !p.wants_sit_out).length >= 2;
 }
 
 export function startHand(ctx: GameCtx) {
@@ -47,21 +47,22 @@ export function startHand(ctx: GameCtx) {
     };
   }
 
-  const eligible = players.filter((p) => p.status !== "left" && p.chips > 0);
+  const eligible = players.filter((p) => p.status !== "left" && p.chips > 0 && !p.wants_sit_out);
   if (eligible.length < 2) throw new Error("Não há jogadores suficientes");
 
   for (const p of players) {
     if (p.status === "left") continue;
-    if (p.chips > 0) {
+    if (p.chips > 0 && !p.wants_sit_out) {
       p.status = "active";
       p.current_bet = 0;
       p.total_bet_hand = 0;
       p.has_acted = false;
     } else {
-      // busted players sitting out must not carry a stale total_bet_hand into
-      // future hands — left uncleared, computeSidePots/awardFoldWin would keep
-      // reading their old contribution as if it were part of THIS hand's pot,
-      // phantom-crediting chips to whoever it made "eligible" for a side pot.
+      // busted players and anyone who opted to sit out must not carry a stale
+      // total_bet_hand into future hands — left uncleared, computeSidePots/
+      // awardFoldWin would keep reading their old contribution as if it were
+      // part of THIS hand's pot, phantom-crediting chips to whoever it made
+      // "eligible" for a side pot.
       p.status = "sitting_out";
       p.current_bet = 0;
       p.total_bet_hand = 0;

@@ -52,6 +52,8 @@ export const api = {
     call("hand", { code, playerId, token }) as Promise<{ cards: string[] }>,
   toggleStraddle: (playerId: string, token: string, enabled: boolean) =>
     call("toggle_straddle", { playerId, token, enabled }) as Promise<{ ok: boolean }>,
+  toggleSitOut: (playerId: string, token: string, enabled: boolean) =>
+    call("toggle_sit_out", { playerId, token, enabled }) as Promise<{ ok: boolean }>,
   toggleRunItTwice: (code: string, playerId: string, token: string, enabled: boolean) =>
     call("toggle_run_it_twice", { code, playerId, token, enabled }) as Promise<{ ok: boolean }>,
   showHand: (code: string, playerId: string, token: string) =>

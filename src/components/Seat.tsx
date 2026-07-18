@@ -50,6 +50,7 @@ export function Seat({
   const [settings] = useSettings();
   const folded = player.status === "folded";
   const allIn = player.status === "all_in";
+  const sittingOut = player.status === "sitting_out" && player.chips > 0;
   const color = AVATAR_COLORS[player.seat % AVATAR_COLORS.length];
   const cardCount = holeCards?.length || 2;
 
@@ -72,18 +73,20 @@ export function Seat({
 
       {/* items-start (not stretch) + no fixed height: the card's own aspect-[5/7] must
           win, or flex cross-axis stretch squashes it into whatever height happens to be here */}
-      <div className="flex gap-1.5 mb-1.5 items-start">
-        {(holeCards || Array.from({ length: cardCount })).map((c, i) => (
-          <PlayingCard
-            key={i}
-            card={c as string | undefined}
-            hidden={!showCards}
-            size={isYou ? "xl" : "md"}
-            delay={i * 0.18}
-            highlight={isYou && showCards}
-          />
-        ))}
-      </div>
+      {!sittingOut && (
+        <div className="flex gap-1.5 mb-1.5 items-start">
+          {(holeCards || Array.from({ length: cardCount })).map((c, i) => (
+            <PlayingCard
+              key={i}
+              card={c as string | undefined}
+              hidden={!showCards}
+              size={isYou ? "xl" : "md"}
+              delay={i * 0.18}
+              highlight={isYou && showCards}
+            />
+          ))}
+        </div>
+      )}
 
       <motion.div
         animate={
@@ -100,7 +103,7 @@ export function Seat({
         transition={{ duration: 1.8, repeat: isTurn ? Infinity : 0, ease: "easeInOut" }}
         className={`relative w-16 h-16 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-lg border-2 ${
           isTurn ? "border-amber-300" : isYou ? "border-cyan-300/80" : "border-white/20"
-        } ${folded ? "opacity-40 grayscale" : ""}`}
+        } ${folded || sittingOut ? "opacity-40 grayscale" : ""}`}
       >
         {player.name.slice(0, 2).toUpperCase()}
         {isTurn && (
@@ -181,6 +184,12 @@ export function Seat({
       {folded && (
         <div className="absolute top-9 text-[10px] font-bold text-rose-300 bg-black/70 px-2 py-0.5 rounded rotate-[-8deg] border border-rose-500/30">
           DESISTIU
+        </div>
+      )}
+
+      {sittingOut && (
+        <div className="absolute top-9 text-[10px] font-bold text-slate-300 bg-black/70 px-2 py-0.5 rounded border border-slate-500/30">
+          DE FORA
         </div>
       )}
 

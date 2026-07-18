@@ -61,6 +61,7 @@ export interface PlayerRow {
   is_connected: boolean;
   created_at: string;
   auto_straddle: boolean;
+  wants_sit_out: boolean;
 }
 
 export type PlayerAction = "fold" | "check" | "call" | "raise" | "all_in";

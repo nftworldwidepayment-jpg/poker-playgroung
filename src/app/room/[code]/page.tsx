@@ -210,6 +210,19 @@ export default function RoomPage() {
     }
   }
 
+  async function handleToggleSitOut() {
+    if (!session || !you) return;
+    try {
+      await api.toggleSitOut(session.playerId, session.token, !you.wants_sit_out);
+      pushToast(
+        you.wants_sit_out ? "Vais voltar a jogar na próxima mão" : "Vais sentar-te de fora a partir da próxima mão",
+        "info"
+      );
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : "Erro ao alterar estado");
+    }
+  }
+
   async function handleToggleRunItTwice() {
     if (!session || !room) return;
     try {
@@ -331,6 +344,15 @@ export default function RoomPage() {
           </button>
         </div>
         <div className="flex items-center gap-1 shrink-0 relative">
+          {you && room.status !== "finished" && (
+            <button
+              onClick={handleToggleSitOut}
+              className={`text-lg py-1.5 px-1 ${you.wants_sit_out ? "text-amber-300" : "text-white/50 hover:text-white"}`}
+              title={you.wants_sit_out ? "Estou de volta" : "Sentar-me fora"}
+            >
+              {you.wants_sit_out ? "🙋" : "🪑"}
+            </button>
+          )}
           <button
             onClick={() => setHistoryOpen((v) => !v)}
             disabled={handHistory.length === 0}
