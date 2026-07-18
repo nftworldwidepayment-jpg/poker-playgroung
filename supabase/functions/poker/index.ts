@@ -42,6 +42,11 @@ Deno.serve(async (req) => {
       body = Object.fromEntries(url.searchParams.entries());
     }
 
+    const AVATAR_KEYS = ["steampunk-man", "old-man", "wolf", "raven"];
+    function randomAvatarKey(): string {
+      return AVATAR_KEYS[Math.floor(Math.random() * AVATAR_KEYS.length)];
+    }
+
     switch (op) {
       case "create": {
         const name = String(body.name || "Jogador").trim().replace(/\s+/g, " ").slice(0, 20) || "Jogador";
@@ -56,7 +61,7 @@ Deno.serve(async (req) => {
         const allowStraddle = body.allowStraddle !== false;
         const joinPassword = String(body.joinPassword || "").trim().slice(0, 30) || null;
         const tableName = String(body.tableName || "").trim().slice(0, 30) || null;
-        const avatarKey = String(body.avatarKey || "").trim().slice(0, 40) || null;
+        const avatarKey = String(body.avatarKey || "").trim().slice(0, 40) || randomAvatarKey();
 
         const db = admin();
         let code = genCode();
@@ -103,7 +108,7 @@ Deno.serve(async (req) => {
         const code = String(body.code || "").trim().toUpperCase();
         const name = String(body.name || "Jogador").trim().replace(/\s+/g, " ").slice(0, 20) || "Jogador";
         const password = String(body.password || "");
-        const avatarKey = String(body.avatarKey || "").trim().slice(0, 40) || null;
+        const avatarKey = String(body.avatarKey || "").trim().slice(0, 40) || randomAvatarKey();
         const db = admin();
         const { data: room } = await db.from("rooms").select("*").eq("code", code).single();
         if (!room) return json({ error: "Sala não encontrada" }, 404);
