@@ -3,10 +3,15 @@ import { useEffect, useState } from "react";
 import { supabaseBrowser } from "./supabaseClient";
 import { PlayerRow, RoomRow } from "./types";
 
-export function useRoom(code: string) {
+// youId (if provided) is tracked as "present" in this room's realtime presence set,
+// so every other tab watching the same room can tell who's actually connected right
+// now vs. who just hasn't left their seat — purely informational (the 30s server-side
+// turn timeout already keeps the game moving regardless of presence).
+export function useRoom(code: string, youId?: string | null) {
   const [room, setRoom] = useState<RoomRow | null>(null);
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!code) return;
@@ -39,7 +44,7 @@ export function useRoom(code: string) {
       setLoading(false);
 
       const channel = sb
-        .channel(`room-${roomId}`)
+        .channel(`room-${roomId}`, { config: { presence: { key: youId || crypto.randomUUID() } } })
         .on(
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "rooms", filter: `id=eq.${roomId}` },
@@ -58,7 +63,14 @@ export function useRoom(code: string) {
             setPlayers((data || []) as unknown as PlayerRow[]);
           }
         )
-        .subscribe();
+        .on("presence", { event: "sync" }, () => {
+          setConnectedIds(new Set(Object.keys(channel.presenceState())));
+        })
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED" && youId) {
+            await channel.track({ playerId: youId, online_at: new Date().toISOString() });
+          }
+        });
 
       return () => {
         sb.removeChannel(channel);
@@ -70,7 +82,7 @@ export function useRoom(code: string) {
       cancelled = true;
       cleanupPromise.then((fn) => fn && fn());
     };
-  }, [code]);
+  }, [code, youId]);
 
-  return { room, players, loading };
+  return { room, players, loading, connectedIds };
 }

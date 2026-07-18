@@ -20,8 +20,8 @@ export default function RoomPage() {
   const code = (params.code || "").toUpperCase();
   const router = useRouter();
 
-  const { room, players, loading } = useRoom(code);
   const [session, setSession] = useState<Session | null>(null);
+  const { room, players, loading, connectedIds } = useRoom(code, session?.playerId);
   const [joinName, setJoinName] = useState("");
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
@@ -386,6 +386,7 @@ export default function RoomPage() {
           youId={session.playerId}
           holeCards={room.status === "playing" ? holeCards : []}
           timerPct={timerPct}
+          connectedIds={connectedIds}
         />
 
         {room.status === "waiting" && (
@@ -432,6 +433,20 @@ export default function RoomPage() {
           </div>
         )}
       </div>
+
+      {(() => {
+        const actor = players.find((p) => p.seat === room.current_turn_seat);
+        const actorDisconnected =
+          actor && actor.id !== session.playerId && connectedIds.size > 0 && !connectedIds.has(actor.id);
+        if (!actorDisconnected || room.phase === "showdown") return null;
+        return (
+          <div className="fixed top-14 inset-x-0 z-20 flex justify-center px-4 pointer-events-none">
+            <div className="bg-slate-800/90 border border-slate-500/30 text-slate-200 text-xs rounded-full px-3 py-1.5 backdrop-blur">
+              {actor!.name} está desligado — a jogada passa automaticamente quando o tempo acabar
+            </div>
+          </div>
+        );
+      })()}
 
       {room.phase === "showdown" && showWinner && (
         <WinnerOverlay

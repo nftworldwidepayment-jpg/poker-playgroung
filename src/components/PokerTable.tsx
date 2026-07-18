@@ -88,12 +88,14 @@ export function PokerTable({
   youId,
   holeCards,
   timerPct,
+  connectedIds,
 }: {
   room: RoomRow;
   players: PlayerRow[];
   youId: string | null;
   holeCards: string[];
   timerPct: number;
+  connectedIds?: Set<string>;
 }) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const total = Math.max(ordered.length, 1);
@@ -231,6 +233,7 @@ export function PokerTable({
             isThinking={isThinking}
             equityPct={room.all_in_equity?.find((e) => e.playerId === p.id)?.pct}
             bigBlind={room.big_blind}
+            isDisconnected={!!connectedIds && connectedIds.size > 0 && p.status !== "left" && !connectedIds.has(p.id)}
           />
         );
       })}

@@ -31,6 +31,7 @@ export function Seat({
   isThinking,
   equityPct,
   bigBlind,
+  isDisconnected,
 }: {
   player: PlayerRow;
   isYou: boolean;
@@ -44,6 +45,7 @@ export function Seat({
   isThinking?: boolean;
   equityPct?: number;
   bigBlind: number;
+  isDisconnected?: boolean;
 }) {
   const [settings] = useSettings();
   const folded = player.status === "folded";
@@ -121,6 +123,14 @@ export function Seat({
         {allIn && (
           <span className="absolute -bottom-2 px-1.5 py-0.5 rounded-full bg-rose-600 text-[9px] font-bold shadow">
             ALL-IN
+          </span>
+        )}
+        {isDisconnected && !isYou && (
+          <span
+            className="absolute -top-1 -left-1 w-3.5 h-3.5 rounded-full bg-slate-500 border-2 border-slate-900 flex items-center justify-center"
+            title="Desligado"
+          >
+            <span className="w-1 h-1 rounded-full bg-white/80" />
           </span>
         )}
       </motion.div>
