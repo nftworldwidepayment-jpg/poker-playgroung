@@ -1,7 +1,7 @@
 import { Card, PlayerRow, RoomRow } from "./types.ts";
 import { evaluate7, evaluateOmaha, freshDeck, shuffle } from "./cards.ts";
 
-const TURN_SECONDS = 30;
+const DEFAULT_TURN_SECONDS = 30;
 
 export interface GameCtx {
   room: RoomRow;
@@ -9,8 +9,9 @@ export interface GameCtx {
   holeCards: Record<string, Card[]>;
 }
 
-function turnDeadline(): string {
-  return new Date(Date.now() + TURN_SECONDS * 1000).toISOString();
+function turnDeadline(room: RoomRow): string {
+  const seconds = room.turn_seconds || DEFAULT_TURN_SECONDS;
+  return new Date(Date.now() + seconds * 1000).toISOString();
 }
 
 function nextSeat(
@@ -91,27 +92,41 @@ export function startHand(ctx: GameCtx) {
   const sbSeat = seats[sbIdx];
   const bbSeat = seats[bbIdx];
 
+  // ante: every dealt-in player posts it straight into the pot before blinds —
+  // unlike a blind/straddle it never counts toward current_bet (nobody "calls"
+  // an ante), it only adds to total_bet_hand so computeSidePots/awardFoldWin
+  // pick it up as part of the pot exactly like any other contribution.
+  if (room.ante > 0) {
+    for (const p of eligible) {
+      const anteAmt = Math.min(room.ante, p.chips);
+      p.chips -= anteAmt;
+      p.total_bet_hand += anteAmt;
+      if (p.chips === 0) p.status = "all_in";
+    }
+  }
+
   const sbPlayer = players.find((p) => p.seat === sbSeat)!;
   const bbPlayer = players.find((p) => p.seat === bbSeat)!;
 
   const sbAmt = Math.min(room.small_blind, sbPlayer.chips);
   sbPlayer.chips -= sbAmt;
   sbPlayer.current_bet = sbAmt;
-  sbPlayer.total_bet_hand = sbAmt;
+  sbPlayer.total_bet_hand += sbAmt;
   if (sbPlayer.chips === 0) sbPlayer.status = "all_in";
 
   const bbAmt = Math.min(room.big_blind, bbPlayer.chips);
   bbPlayer.chips -= bbAmt;
   bbPlayer.current_bet = bbAmt;
-  bbPlayer.total_bet_hand = bbAmt;
+  bbPlayer.total_bet_hand += bbAmt;
   if (bbPlayer.chips === 0) bbPlayer.status = "all_in";
 
   // optional straddle: the player directly after BB may opt in (via auto_straddle)
-  // to post 2x BB blind, which raises the effective preflop bet and shifts first action
+  // to post 2x BB blind, which raises the effective preflop bet and shifts first action —
+  // gated by room.allow_straddle so a table can be created with straddling disabled entirely
   let straddleSeat: number | null = null;
   let openingBet = bbAmt;
   let openingMinRaise = room.big_blind;
-  if (N > 2) {
+  if (N > 2 && room.allow_straddle) {
     const straddleSeatCandidate = seats[(bbIdx + 1) % N];
     const straddlePlayer = players.find((p) => p.seat === straddleSeatCandidate);
     if (
@@ -123,7 +138,7 @@ export function startHand(ctx: GameCtx) {
       const straddleAmt = room.big_blind * 2;
       straddlePlayer.chips -= straddleAmt;
       straddlePlayer.current_bet = straddleAmt;
-      straddlePlayer.total_bet_hand = straddleAmt;
+      straddlePlayer.total_bet_hand += straddleAmt;
       if (straddlePlayer.chips === 0) straddlePlayer.status = "all_in";
       openingBet = straddleAmt;
       openingMinRaise = straddleAmt - bbAmt;
@@ -158,7 +173,7 @@ export function startHand(ctx: GameCtx) {
 
   const firstToAct = nextSeat(players, straddleSeat ?? bbSeat, (p) => p.status === "active");
   room.current_turn_seat = firstToAct;
-  room.turn_expires_at = firstToAct != null ? turnDeadline() : null;
+  room.turn_expires_at = firstToAct != null ? turnDeadline(room) : null;
 
   if (firstToAct == null) {
     advanceStreet(ctx);
@@ -441,7 +456,7 @@ export function advanceStreet(ctx: GameCtx) {
     return;
   }
   room.current_turn_seat = firstToAct;
-  room.turn_expires_at = turnDeadline();
+  room.turn_expires_at = turnDeadline(room);
 }
 
 function roundComplete(players: PlayerRow[], currentBet: number): boolean {
@@ -552,7 +567,7 @@ export function applyAction(
     return;
   }
   room.current_turn_seat = next;
-  room.turn_expires_at = turnDeadline();
+  room.turn_expires_at = turnDeadline(room);
 }
 
 export function applyTimeout(ctx: GameCtx) {

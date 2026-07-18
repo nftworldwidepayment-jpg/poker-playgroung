@@ -45,6 +45,11 @@ export interface RoomRow {
   run_it_twice_boards: Card[][] | null;
   last_hand: LastHandSnapshot | null;
   all_in_equity: { playerId: string; pct: number }[] | null;
+  ante: number;
+  turn_seconds: number;
+  allow_straddle: boolean;
+  join_password: string | null;
+  table_name: string | null;
 }
 
 export interface PlayerRow {

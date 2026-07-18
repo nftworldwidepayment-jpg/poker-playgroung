@@ -4,6 +4,10 @@ const ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzZm1samJycXltYnltaWl5cHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMzA0MzAsImV4cCI6MjA5OTgwNjQzMH0.3pyxF8gQMfKPQTDks91U_YplMkUWyiVN7wAuU_LzTWw";
 
+export class ApiError extends Error {
+  requiresPassword?: boolean;
+}
+
 async function call(op: string, body: Record<string, unknown> = {}) {
   const res = await fetch(FN_URL, {
     method: "POST",
@@ -15,7 +19,11 @@ async function call(op: string, body: Record<string, unknown> = {}) {
     body: JSON.stringify({ op, ...body }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Erro de rede");
+  if (!res.ok) {
+    const err = new ApiError(data.error || "Erro de rede");
+    err.requiresPassword = !!data.requiresPassword;
+    throw err;
+  }
   return data;
 }
 
@@ -27,22 +35,30 @@ export interface Session {
   savedAt?: number;
 }
 
+export interface CreateRoomOptions {
+  name: string;
+  tableName?: string;
+  smallBlind: number;
+  bigBlind: number;
+  buyIn: number;
+  gameType: string;
+  runItTwiceEnabled?: boolean;
+  maxPlayers?: number;
+  ante?: number;
+  turnSeconds?: number;
+  allowStraddle?: boolean;
+  joinPassword?: string;
+}
+
 export const api = {
-  createRoom: (
-    name: string,
-    smallBlind: number,
-    bigBlind: number,
-    buyIn: number,
-    gameType: string,
-    runItTwiceEnabled = false
-  ) =>
-    call("create", { name, smallBlind, bigBlind, buyIn, gameType, runItTwiceEnabled }) as Promise<{
+  createRoom: (opts: CreateRoomOptions) =>
+    call("create", { ...opts }) as Promise<{
       code: string;
       playerId: string;
       token: string;
     }>,
-  joinRoom: (code: string, name: string) =>
-    call("join", { code, name }) as Promise<{ code: string; playerId: string; token: string }>,
+  joinRoom: (code: string, name: string, password?: string) =>
+    call("join", { code, name, password }) as Promise<{ code: string; playerId: string; token: string }>,
   startHand: (code: string, playerId: string, token: string) =>
     call("start", { code, playerId, token }) as Promise<{ ok: boolean }>,
   action: (code: string, playerId: string, token: string, action: string, amount?: number) =>

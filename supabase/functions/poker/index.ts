@@ -36,6 +36,12 @@ Deno.serve(async (req) => {
         const buyIn = Math.max(bigBlind * 10, Number(body.buyIn) || 1000);
         const gameType = body.gameType === "plo4" ? "plo4" : "nlhe";
         const runItTwiceEnabled = !!body.runItTwiceEnabled;
+        const maxPlayers = [2, 6, 9].includes(Number(body.maxPlayers)) ? Number(body.maxPlayers) : 9;
+        const ante = Math.max(0, Math.min(Number(body.ante) || 0, bigBlind * 5));
+        const turnSeconds = [15, 30, 60].includes(Number(body.turnSeconds)) ? Number(body.turnSeconds) : 30;
+        const allowStraddle = body.allowStraddle !== false;
+        const joinPassword = String(body.joinPassword || "").trim().slice(0, 30) || null;
+        const tableName = String(body.tableName || "").trim().slice(0, 30) || null;
 
         const db = admin();
         let code = genCode();
@@ -54,6 +60,12 @@ Deno.serve(async (req) => {
             phase: "waiting",
             game_type: gameType,
             run_it_twice_enabled: runItTwiceEnabled,
+            max_players: maxPlayers,
+            ante,
+            turn_seconds: turnSeconds,
+            allow_straddle: allowStraddle,
+            join_password: joinPassword,
+            table_name: tableName,
           })
           .select()
           .single();
@@ -74,9 +86,14 @@ Deno.serve(async (req) => {
       case "join": {
         const code = String(body.code || "").trim().toUpperCase();
         const name = String(body.name || "Jogador").trim().slice(0, 20) || "Jogador";
+        const password = String(body.password || "");
         const db = admin();
         const { data: room } = await db.from("rooms").select("*").eq("code", code).single();
         if (!room) return json({ error: "Sala não encontrada" }, 404);
+
+        if (room.join_password && room.join_password !== password) {
+          return json({ error: "Palavra-passe incorreta", requiresPassword: true }, 403);
+        }
 
         const { data: players } = await db
           .from("players")

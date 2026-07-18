@@ -299,7 +299,7 @@ export default function RoomPage() {
   }
 
   const timerPct = room?.turn_expires_at
-    ? Math.max(0, Math.min(1, (new Date(room.turn_expires_at).getTime() - now) / 30000))
+    ? Math.max(0, Math.min(1, (new Date(room.turn_expires_at).getTime() - now) / ((room.turn_seconds || 30) * 1000)))
     : 0;
 
   if (loading) {
@@ -373,9 +373,19 @@ export default function RoomPage() {
           ← Sair
         </button>
         <div className="flex items-center gap-2">
+          {room.table_name && (
+            <span className="hidden md:inline-block text-xs font-serif italic text-white/40 truncate max-w-[140px]">
+              {room.table_name}
+            </span>
+          )}
           <span className="hidden sm:inline-block text-[10px] uppercase tracking-widest text-amber-300/60 font-serif border border-amber-400/20 rounded-full px-2 py-1">
             {room.game_type === "plo4" ? "PLO4" : "Hold'em"}
           </span>
+          {room.ante > 0 && (
+            <span className="hidden sm:inline-block text-[10px] uppercase tracking-widest text-white/40 font-mono border border-white/10 rounded-full px-2 py-1">
+              Ante {room.ante}
+            </span>
+          )}
           <button
             onClick={copyInvite}
             className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-sm font-mono tracking-widest hover:border-amber-400/50 transition"
@@ -517,7 +527,7 @@ export default function RoomPage() {
               <span className="font-mono text-amber-300">{code}</span>
             </div>
             <div className="flex items-center gap-3 text-xs">
-              {you && (
+              {you && room.allow_straddle && (
                 <label className="flex items-center gap-1.5 text-white/50 cursor-pointer">
                   <input
                     type="checkbox"
