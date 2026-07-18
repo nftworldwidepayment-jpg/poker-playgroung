@@ -76,6 +76,7 @@ export async function saveCtx(ctx: GameCtx) {
         auto_straddle: p.auto_straddle,
         wants_sit_out: p.wants_sit_out,
         last_action_at: p.last_action_at,
+        consecutive_timeouts: p.consecutive_timeouts,
       })
       .eq("id", p.id);
   }
@@ -87,6 +88,25 @@ export async function saveCtx(ctx: GameCtx) {
   }));
   if (holeCardRows.length) {
     await db.from("hole_cards").upsert(holeCardRows);
+  }
+
+  // permanent server-side hand history — the client only keeps the last 5 hands locally.
+  // onConflict makes this safe to call repeatedly (e.g. a "show hand" reveal after
+  // showdown re-saves the same hand without inserting a duplicate row).
+  if (room.phase === "showdown" && room.winners && room.winners.length > 0) {
+    await db
+      .from("hand_history")
+      .upsert(
+        {
+          room_id: room.id,
+          hand_number: room.hand_number,
+          game_type: room.game_type,
+          board: room.community_cards,
+          winners: room.winners,
+          revealed_hands: room.revealed_hands,
+        },
+        { onConflict: "room_id,hand_number" }
+      );
   }
 }
 
@@ -112,4 +132,34 @@ export function genCode(): string {
 
 export function genToken(): string {
   return crypto.randomUUID().replace(/-/g, "");
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+// Room passwords live in their own RLS-locked table (service-role only) instead of a
+// plaintext column on `rooms` — `rooms` is publicly readable (anyone can see room state
+// to play), and Realtime replicates whole rows to subscribers, so anything secret can
+// never live there even hashed. Salted SHA-256 is adequate here: these aren't account
+// credentials reused elsewhere, just a lightweight gate on top of the room code.
+export async function setRoomPassword(db: ReturnType<typeof admin>, roomId: string, password: string) {
+  const salt = crypto.randomUUID();
+  const hash = await sha256Hex(salt + password);
+  await db.from("room_passwords").upsert({ room_id: roomId, password_hash: hash, salt });
+}
+
+export async function checkRoomPassword(
+  db: ReturnType<typeof admin>,
+  roomId: string,
+  attempt: string
+): Promise<boolean> {
+  const { data } = await db.from("room_passwords").select("password_hash, salt").eq("room_id", roomId).maybeSingle();
+  if (!data) return true; // no password set — nothing to check
+  const hash = await sha256Hex(data.salt + attempt);
+  return hash === data.password_hash;
 }

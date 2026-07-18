@@ -543,6 +543,7 @@ export function applyAction(
   }
 
   player.has_acted = true;
+  player.consecutive_timeouts = 0; // a real action from the player clears any AFK streak
   room.pot = players.reduce((s, p) => s + p.total_bet_hand, 0);
   room.last_action = { seat: player.seat, name, action, amount };
 
@@ -570,6 +571,8 @@ export function applyAction(
   room.turn_expires_at = turnDeadline(room);
 }
 
+const AFK_SIT_OUT_THRESHOLD = 3;
+
 export function applyTimeout(ctx: GameCtx) {
   const { room, players } = ctx;
   const player = players.find((p) => p.seat === room.current_turn_seat);
@@ -578,6 +581,14 @@ export function applyTimeout(ctx: GameCtx) {
     applyAction(ctx, player.id, "check");
   } else {
     applyAction(ctx, player.id, "fold");
+  }
+  // applyAction just reset this to 0 as a real action would — but a server-forced
+  // timeout isn't a real action, so re-apply the AFK streak on top of that. After a
+  // few hands in a row of doing nothing but timing out, sit them out automatically
+  // so they stop being dealt in (and folding blinds away) until they come back.
+  player.consecutive_timeouts += 1;
+  if (player.consecutive_timeouts >= AFK_SIT_OUT_THRESHOLD) {
+    player.wants_sit_out = true;
   }
 }
 

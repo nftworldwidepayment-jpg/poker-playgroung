@@ -1,0 +1,26 @@
+name: Deploy edge function (manual)
+
+# Not wired to auto-run on push — the edge function has historically been deployed
+# manually via the Supabase MCP tool during development. This workflow exists so it CAN
+# be automated later: trigger it by hand from the Actions tab once the two secrets below
+# are configured in the repo (Settings → Secrets and variables → Actions):
+#   SUPABASE_ACCESS_TOKEN  — from https://supabase.com/dashboard/account/tokens
+#   SUPABASE_PROJECT_REF   — the project ref, e.g. vsfmljbrqymbymiiyptx
+# Without those secrets set, this workflow will fail at the login step rather than
+# silently doing nothing.
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm run sync:engine
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase functions deploy poker --project-ref "$SUPABASE_PROJECT_REF"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}

@@ -48,7 +48,7 @@ export interface RoomRow {
   ante: number;
   turn_seconds: number;
   allow_straddle: boolean;
-  join_password: string | null;
+  is_private: boolean;
   table_name: string | null;
   paused_at: string | null;
 }
@@ -70,6 +70,8 @@ export interface PlayerRow {
   wants_sit_out: boolean;
   avatar_key: string | null;
   last_action_at: string | null;
+  left_at: string | null;
+  consecutive_timeouts: number;
 }
 
 export type PlayerAction = "fold" | "check" | "call" | "raise" | "all_in";
