@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { DeckFilters } from "@/components/PlayingCard";
+import { PreferenceEffects } from "@/components/PreferenceEffects";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,6 +23,11 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Poker Night — mesa de poker com os amigos",
   description: "Mesa de Texas Hold'em online, em tempo real, para jogar com os teus amigos.",
+  icons: { icon: "/icon-192.png", apple: "/icon-192.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a0e12",
 };
 
 export default function RootLayout({
@@ -36,6 +42,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-950 text-white">
         <DeckFilters />
+        <PreferenceEffects />
         {children}
       </body>
     </html>

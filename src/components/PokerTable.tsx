@@ -92,6 +92,10 @@ export function PokerTable({
   noteDots,
   noteTitles,
   onNoteClick,
+  emotes,
+  onSendEmote,
+  isHost,
+  onKick,
 }: {
   room: RoomRow;
   players: PlayerRow[];
@@ -102,6 +106,10 @@ export function PokerTable({
   noteDots?: Record<string, string>;
   noteTitles?: Record<string, string>;
   onNoteClick?: (playerId: string) => void;
+  emotes?: { id: number; playerId: string; emoji: string }[];
+  onSendEmote?: (playerId: string, emoji: string) => void;
+  isHost?: boolean;
+  onKick?: (playerId: string) => void;
 }) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const total = Math.max(ordered.length, 1);
@@ -224,6 +232,7 @@ export function PokerTable({
         const isThinking =
           room.current_turn_seat === p.seat && p.status === "active" && room.phase !== "showdown";
         const rel = (i - youIdx + total) % total;
+        const activeEmote = emotes?.filter((e) => e.playerId === p.id).slice(-1)[0];
         return (
           <Seat
             key={p.id}
@@ -243,6 +252,10 @@ export function PokerTable({
             noteDotColor={noteDots?.[p.id]}
             noteTitle={noteTitles?.[p.id]}
             onNoteClick={onNoteClick ? () => onNoteClick(p.id) : undefined}
+            emote={activeEmote?.emoji}
+            onSendEmote={onSendEmote ? (emoji) => onSendEmote(p.id, emoji) : undefined}
+            isHost={isHost}
+            onKick={onKick ? () => onKick(p.id) : undefined}
           />
         );
       })}

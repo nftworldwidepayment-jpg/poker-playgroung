@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { api, saveSession, loadLatestSession, Session, CreateRoomOptions } from "@/lib/api";
+import { api, saveSession, loadLatestSession, loadAllSessions, Session, CreateRoomOptions } from "@/lib/api";
 import { Splash } from "@/components/Splash";
 import { SettingsModal } from "@/components/SettingsModal";
 import { CreateTableModal, loadCreatePrefs } from "@/components/CreateTableModal";
@@ -99,9 +99,12 @@ export default function Home() {
   const [quickBusy, setQuickBusy] = useState(false);
   const [quickError, setQuickError] = useState("");
   const [canQuickCreate, setCanQuickCreate] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
 
   useEffect(() => {
     setLastSession(loadLatestSession());
+    setAllSessions(loadAllSessions());
     const name = loadSavedName();
     setPlayerName(name);
     setCanQuickCreate(!!name && !!localStorage.getItem("poker-create-prefs-v1"));
@@ -114,8 +117,8 @@ export default function Home() {
     router.push(`/room/${res.code}`);
   }
 
-  async function handleJoin(code: string, name: string, password?: string) {
-    const res = await api.joinRoom(code, name, password);
+  async function handleJoin(code: string, name: string, password?: string, avatarKey?: string) {
+    const res = await api.joinRoom(code, name, password, avatarKey);
     saveSession({ code: res.code, playerId: res.playerId, token: res.token, name });
     saveName(name);
     router.push(`/room/${res.code}`);
@@ -292,6 +295,41 @@ export default function Home() {
           <span className="w-1 h-1 rounded-full bg-white/15" />
           <span className="flex items-center gap-1">📱 Qualquer dispositivo</span>
         </div>
+
+        {allSessions.length > 0 && (
+          <div className="mt-3 text-center">
+            <button
+              onClick={() => setHistoryOpen((v) => !v)}
+              className="text-[11px] text-white/25 hover:text-white/50 transition underline underline-offset-2"
+            >
+              {historyOpen ? "Esconder" : "Ver"} o meu histórico ({allSessions.length})
+            </button>
+            {historyOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-3 flex flex-col gap-1.5 max-h-56 overflow-y-auto text-left"
+              >
+                {allSessions.map((s) => (
+                  <button
+                    key={s.code + (s.savedAt || 0)}
+                    onClick={() => router.push(`/room/${s.code}`)}
+                    className="flex items-center justify-between gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs transition"
+                  >
+                    <span className="text-white/60">
+                      {s.name} <span className="text-white/30 font-mono">· {s.code}</span>
+                    </span>
+                    {s.savedAt && (
+                      <span className="text-white/25 font-mono shrink-0">
+                        {new Date(s.savedAt).toLocaleDateString("pt-PT")}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </div>
+        )}
       </motion.div>
     </div>
   );

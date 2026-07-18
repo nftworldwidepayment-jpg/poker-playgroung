@@ -48,6 +48,7 @@ export interface CreateRoomOptions {
   turnSeconds?: number;
   allowStraddle?: boolean;
   joinPassword?: string;
+  avatarKey?: string;
 }
 
 export const api = {
@@ -57,8 +58,8 @@ export const api = {
       playerId: string;
       token: string;
     }>,
-  joinRoom: (code: string, name: string, password?: string) =>
-    call("join", { code, name, password }) as Promise<{ code: string; playerId: string; token: string }>,
+  joinRoom: (code: string, name: string, password?: string, avatarKey?: string) =>
+    call("join", { code, name, password, avatarKey }) as Promise<{ code: string; playerId: string; token: string }>,
   startHand: (code: string, playerId: string, token: string) =>
     call("start", { code, playerId, token }) as Promise<{ ok: boolean }>,
   action: (code: string, playerId: string, token: string, action: string, amount?: number) =>
@@ -74,6 +75,10 @@ export const api = {
     call("toggle_run_it_twice", { code, playerId, token, enabled }) as Promise<{ ok: boolean }>,
   showHand: (code: string, playerId: string, token: string) =>
     call("show_hand", { code, playerId, token }) as Promise<{ ok: boolean }>,
+  togglePause: (code: string, playerId: string, token: string, paused: boolean) =>
+    call("toggle_pause", { code, playerId, token, paused }) as Promise<{ ok: boolean }>,
+  kickPlayer: (playerId: string, token: string, targetId: string) =>
+    call("kick_player", { playerId, token, targetId }) as Promise<{ ok: boolean }>,
 };
 
 const STORAGE_KEY = "poker-session";
@@ -107,5 +112,23 @@ export function loadLatestSession(): Session | null {
     return best;
   } catch {
     return null;
+  }
+}
+
+// Every room this browser has ever joined/created, newest first — powers
+// "O meu histórico" in the lobby. Purely local, no server round-trip.
+export function loadAllSessions(): Session[] {
+  try {
+    const out: Session[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(STORAGE_KEY + ":")) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      out.push(JSON.parse(raw));
+    }
+    return out.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+  } catch {
+    return [];
   }
 }

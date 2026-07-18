@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 
 // Player preferences, persisted locally per browser. Kept deliberately small and
 // serialisable so it can move to per-account storage later without touching callers.
+export type FontSize = "sm" | "md" | "lg";
+
 export interface Settings {
   sound: boolean;
   fourColorDeck: boolean;
@@ -10,6 +12,8 @@ export interface Settings {
   fastMode: boolean; // 2x animation speed for grinders
   reducedMotion: boolean; // ambient/low-glare mode for long sessions
   handStrength: boolean; // show "you have: pair of queens" hint
+  fontSize: FontSize; // global UI text scale, for readability
+  highContrast: boolean; // stronger borders/opacity for low-vision players
 }
 
 const DEFAULTS: Settings = {
@@ -19,6 +23,8 @@ const DEFAULTS: Settings = {
   fastMode: false,
   reducedMotion: false,
   handStrength: true,
+  fontSize: "md",
+  highContrast: false,
 };
 
 const KEY = "poker-settings-v1";

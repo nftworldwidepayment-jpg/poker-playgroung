@@ -1,7 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabaseBrowser } from "./supabaseClient";
 import { PlayerRow, RoomRow } from "./types";
+
+interface EmoteEvent {
+  id: number;
+  playerId: string;
+  emoji: string;
+}
+
+let emoteSeq = 0;
 
 // youId (if provided) is tracked as "present" in this room's realtime presence set,
 // so every other tab watching the same room can tell who's actually connected right
@@ -12,6 +21,8 @@ export function useRoom(code: string, youId?: string | null) {
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
+  const [emotes, setEmotes] = useState<EmoteEvent[]>([]);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
     if (!code) return;
@@ -66,11 +77,17 @@ export function useRoom(code: string, youId?: string | null) {
         .on("presence", { event: "sync" }, () => {
           setConnectedIds(new Set(Object.keys(channel.presenceState())));
         })
+        .on("broadcast", { event: "emote" }, ({ payload }) => {
+          const ev: EmoteEvent = { id: ++emoteSeq, playerId: payload.playerId, emoji: payload.emoji };
+          setEmotes((cur) => [...cur, ev]);
+          setTimeout(() => setEmotes((cur) => cur.filter((e) => e.id !== ev.id)), 1600);
+        })
         .subscribe(async (status) => {
           if (status === "SUBSCRIBED" && youId) {
             await channel.track({ playerId: youId, online_at: new Date().toISOString() });
           }
         });
+      channelRef.current = channel;
 
       return () => {
         sb.removeChannel(channel);
@@ -84,5 +101,9 @@ export function useRoom(code: string, youId?: string | null) {
     };
   }, [code, youId]);
 
-  return { room, players, loading, connectedIds };
+  function sendEmote(playerId: string, emoji: string) {
+    channelRef.current?.send({ type: "broadcast", event: "emote", payload: { playerId, emoji } });
+  }
+
+  return { room, players, loading, connectedIds, emotes, sendEmote };
 }

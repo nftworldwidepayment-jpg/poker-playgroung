@@ -75,6 +75,7 @@ export async function saveCtx(ctx: GameCtx) {
         has_acted: p.has_acted,
         auto_straddle: p.auto_straddle,
         wants_sit_out: p.wants_sit_out,
+        last_action_at: p.last_action_at,
       })
       .eq("id", p.id);
   }

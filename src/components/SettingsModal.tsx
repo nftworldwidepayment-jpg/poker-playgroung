@@ -84,6 +84,31 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 value={settings.reducedMotion}
                 onChange={set("reducedMotion")}
               />
+              <Toggle
+                label="Alto contraste"
+                desc="Texto e bordas mais fortes, para melhor legibilidade"
+                value={settings.highContrast}
+                onChange={set("highContrast")}
+              />
+            </div>
+
+            <div className="py-3">
+              <span className="block text-sm text-[var(--text-warm)] font-medium mb-2">Tamanho do texto</span>
+              <div className="flex gap-1.5">
+                {(["sm", "md", "lg"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => update({ fontSize: s })}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                      settings.fontSize === s
+                        ? "bg-[var(--gold)] text-slate-900 border-[var(--gold-bright)]"
+                        : "bg-white/5 hover:bg-white/10 text-white/60 border-white/10"
+                    }`}
+                  >
+                    {s === "sm" ? "Pequeno" : s === "md" ? "Normal" : "Grande"}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="text-[10px] uppercase tracking-widest text-[var(--gold)]/70 font-semibold mt-4 mb-0.5">

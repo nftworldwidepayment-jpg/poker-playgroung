@@ -9,3 +9,28 @@ export const AVATAR_OPTIONS = [
 ] as const;
 
 export type AvatarId = (typeof AVATAR_OPTIONS)[number]["id"];
+
+const AVATAR_KEY = "poker-avatar-key";
+
+export function loadSavedAvatar(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(AVATAR_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveAvatar(id: string | null) {
+  try {
+    if (id) localStorage.setItem(AVATAR_KEY, id);
+    else localStorage.removeItem(AVATAR_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function avatarSrc(id: string | null | undefined): string | null {
+  if (!id) return null;
+  return AVATAR_OPTIONS.find((a) => a.id === id)?.src ?? null;
+}

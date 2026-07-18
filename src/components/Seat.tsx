@@ -1,10 +1,12 @@
 "use client";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PlayerRow } from "@/lib/types";
 import { PlayingCard } from "./PlayingCard";
 import { ChipStack } from "./Chip";
 import { CountUp } from "./CountUp";
 import { useSettings } from "@/lib/settings";
+import { avatarSrc } from "@/lib/avatars";
 
 const AVATAR_COLORS = [
   "from-fuchsia-500 to-purple-600",
@@ -35,6 +37,10 @@ export function Seat({
   noteDotColor,
   noteTitle,
   onNoteClick,
+  emote,
+  isHost,
+  onKick,
+  onSendEmote,
 }: {
   player: PlayerRow;
   isYou: boolean;
@@ -52,8 +58,13 @@ export function Seat({
   noteDotColor?: string | null;
   noteTitle?: string | null;
   onNoteClick?: () => void;
+  emote?: string | null;
+  isHost?: boolean;
+  onKick?: () => void;
+  onSendEmote?: (emoji: string) => void;
 }) {
   const [settings] = useSettings();
+  const avatarUrl = avatarSrc(player.avatar_key);
   const folded = player.status === "folded";
   const allIn = player.status === "all_in";
   const sittingOut = player.status === "sitting_out" && player.chips > 0;
@@ -76,6 +87,30 @@ export function Seat({
           {position}
         </div>
       )}
+      {isHost && !isYou && onKick && (
+        <button
+          onClick={onKick}
+          title="Remover jogador (entre mãos)"
+          className="absolute -top-2 right-6 z-20 w-5 h-5 rounded-full bg-rose-900/80 hover:bg-rose-700 border border-rose-400/40 text-rose-200 text-[10px] flex items-center justify-center"
+        >
+          ✕
+        </button>
+      )}
+
+      <AnimatePresence>
+        {emote && (
+          <motion.div
+            key={emote + Date.now()}
+            initial={{ opacity: 0, y: 0, scale: 0.5 }}
+            animate={{ opacity: 1, y: -50, scale: 1.4 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.6, ease: "easeOut" }}
+            className="absolute top-0 z-30 text-2xl pointer-events-none"
+          >
+            {emote}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* items-start (not stretch) + no fixed height: the card's own aspect-[5/7] must
           win, or flex cross-axis stretch squashes it into whatever height happens to be here */}
@@ -111,7 +146,11 @@ export function Seat({
           isTurn ? "border-amber-300" : isYou ? "border-cyan-300/80" : "border-white/20"
         } ${folded || sittingOut ? "opacity-40 grayscale" : ""}`}
       >
-        {player.name.slice(0, 2).toUpperCase()}
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="w-full h-full object-cover rounded-full select-none" draggable={false} />
+        ) : (
+          player.name.slice(0, 2).toUpperCase()
+        )}
         {isTurn && (
           <svg className="absolute -inset-1" viewBox="0 0 100 100">
             <circle
@@ -222,6 +261,48 @@ export function Seat({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {isYou && onSendEmote && <EmoteTrigger onSend={onSendEmote} />}
+    </div>
+  );
+}
+
+const QUICK_EMOTES = ["👍", "😮", "🔥", "😢"];
+
+function EmoteTrigger({ onSend }: { onSend: (e: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="absolute -bottom-16 flex items-center gap-1">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="flex gap-1 bg-black/70 border border-white/10 rounded-full px-1.5 py-1"
+          >
+            {QUICK_EMOTES.map((e) => (
+              <button
+                key={e}
+                onClick={() => {
+                  onSend(e);
+                  setOpen(false);
+                }}
+                className="text-lg hover:scale-125 transition-transform"
+              >
+                {e}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-6 h-6 rounded-full bg-black/50 border border-white/10 text-xs text-white/50 hover:text-white"
+        title="Enviar reação"
+      >
+        😀
+      </button>
     </div>
   );
 }

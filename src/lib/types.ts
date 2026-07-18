@@ -5,7 +5,7 @@ export type Rank =
 
 export type Card = `${Rank}${Suit}`;
 
-export type RoomStatus = "waiting" | "playing" | "finished";
+export type RoomStatus = "waiting" | "playing" | "finished" | "paused";
 export type Phase = "waiting" | "preflop" | "flop" | "turn" | "river" | "showdown";
 export type PlayerStatus = "active" | "folded" | "all_in" | "sitting_out" | "left";
 export type GameType = "nlhe" | "plo4";
@@ -50,6 +50,7 @@ export interface RoomRow {
   allow_straddle: boolean;
   join_password: string | null;
   table_name: string | null;
+  paused_at: string | null;
 }
 
 export interface PlayerRow {
@@ -67,6 +68,8 @@ export interface PlayerRow {
   created_at: string;
   auto_straddle: boolean;
   wants_sit_out: boolean;
+  avatar_key: string | null;
+  last_action_at: string | null;
 }
 
 export type PlayerAction = "fold" | "check" | "call" | "raise" | "all_in";

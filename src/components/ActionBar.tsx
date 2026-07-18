@@ -130,6 +130,10 @@ export function ActionBar({
 
   const pct = maxRaiseTo > clampedMin ? ((raiseTo - clampedMin) / (maxRaiseTo - clampedMin)) * 100 : 0;
 
+  // pot odds: % of the resulting pot you'd be putting in to continue — a quick
+  // gut-check against how often you'd need to win to break even on the call
+  const potOddsPct = toCall > 0 ? Math.round((toCall / (room.pot + toCall)) * 100) : null;
+
   function commitEdit() {
     const n = Number(editValue.replace(/[^\d]/g, ""));
     if (!Number.isNaN(n) && n > 0) setRaiseTo(clamp(n));
@@ -286,7 +290,12 @@ export function ActionBar({
             <span>
               {canCheck ? "Passar" : `Pagar ${fmt(toCall)}`} <span className="hidden sm:inline text-[10px] opacity-60 font-mono">(C)</span>
             </span>
-            {!canCheck && <span className="text-[10px] font-mono opacity-70">{fmtBB(toCall, room.big_blind)}</span>}
+            {!canCheck && (
+              <span className="text-[10px] font-mono opacity-70">
+                {fmtBB(toCall, room.big_blind)}
+                {potOddsPct != null && ` · ${potOddsPct}% pot odds`}
+              </span>
+            )}
           </button>
           <AnimatePresence>
             {canRaise && (

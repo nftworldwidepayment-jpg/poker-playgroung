@@ -4,7 +4,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CreateRoomOptions } from "@/lib/api";
 import { randomTableName } from "@/lib/tableNames";
 import { CountUp } from "./CountUp";
+import { AvatarPicker } from "./AvatarPicker";
 import { useSettings } from "@/lib/settings";
+import { loadSavedAvatar, saveAvatar } from "@/lib/avatars";
 import { playCheck, playChip, playYourAction } from "@/lib/sounds";
 
 const PREFS_KEY = "poker-create-prefs-v1";
@@ -175,6 +177,7 @@ export function CreateTableModal({
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [customBlinds, setCustomBlinds] = useState(false);
   const [password, setPassword] = useState("");
+  const [avatarKey, setAvatarKey] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -186,6 +189,7 @@ export function CreateTableModal({
     if (open) {
       setPrefs(loadCreatePrefs());
       setPlayerName(defaultName);
+      setAvatarKey(loadSavedAvatar());
       setTouched({});
       setServerError("");
       setSuccess(false);
@@ -259,6 +263,7 @@ export function CreateTableModal({
         turnSeconds: prefs.turnSeconds,
         allowStraddle: prefs.allowStraddle,
         joinPassword: prefs.isPrivate ? password.trim() : undefined,
+        avatarKey: avatarKey || undefined,
       });
       setSuccess(true);
     } catch (e) {
@@ -368,6 +373,13 @@ export function CreateTableModal({
                       />
                       <FieldError msg={nameError} />
                     </div>
+                    <AvatarPicker
+                      value={avatarKey}
+                      onChange={(v) => {
+                        setAvatarKey(v);
+                        saveAvatar(v);
+                      }}
+                    />
                     <div>
                       <label className="text-[11px] text-white/40 mb-1 flex items-center justify-between">
                         <span>Nome da mesa (opcional)</span>

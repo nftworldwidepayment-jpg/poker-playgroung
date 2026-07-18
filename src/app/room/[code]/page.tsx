@@ -10,6 +10,7 @@ import { WinnerOverlay } from "@/components/WinnerOverlay";
 import { ToastStack, ToastItem } from "@/components/Toast";
 import { SettingsModal } from "@/components/SettingsModal";
 import { PlayerNoteEditor } from "@/components/PlayerNoteEditor";
+import { Glossary } from "@/components/Glossary";
 import { useSettings } from "@/lib/settings";
 import { handStrengthLabel } from "@/lib/handStrength";
 import { loadNotes, saveNote, PlayerNote, TAG_META } from "@/lib/notes";
@@ -23,7 +24,7 @@ export default function RoomPage() {
   const router = useRouter();
 
   const [session, setSession] = useState<Session | null>(null);
-  const { room, players, loading, connectedIds } = useRoom(code, session?.playerId);
+  const { room, players, loading, connectedIds, emotes, sendEmote } = useRoom(code, session?.playerId);
   const [joinName, setJoinName] = useState("");
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
@@ -40,6 +41,7 @@ export default function RoomPage() {
   >([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [biggestPot, setBiggestPot] = useState(0);
   const [initialChips, setInitialChips] = useState<Record<string, number>>({});
   const [preAction, setPreAction] = useState<"fold" | "check_call" | null>(null);
@@ -272,6 +274,29 @@ export default function RoomPage() {
     }
   }
 
+  async function handleTogglePause() {
+    if (!session || !room) return;
+    try {
+      await api.togglePause(code, session.playerId, session.token, room.status !== "paused");
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : "Erro ao pausar a mesa");
+    }
+  }
+
+  async function handleKick(targetId: string) {
+    if (!session) return;
+    try {
+      await api.kickPlayer(session.playerId, session.token, targetId);
+      pushToast("Jogador removido", "info");
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : "Erro ao remover jogador");
+    }
+  }
+
+  function handleSendEmote(playerId: string, emoji: string) {
+    sendEmote(playerId, emoji);
+  }
+
   async function handleAction(action: string, amount?: number) {
     if (!session) return;
     setBusy(true);
@@ -403,6 +428,22 @@ export default function RoomPage() {
               {you.wants_sit_out ? "🙋" : "🪑"}
             </button>
           )}
+          {isHost && (room.status === "playing" || room.status === "paused") && (
+            <button
+              onClick={handleTogglePause}
+              className={`text-lg py-1.5 px-1 ${room.status === "paused" ? "text-amber-300" : "text-white/50 hover:text-white"}`}
+              title={room.status === "paused" ? "Retomar mesa" : "Pausar mesa"}
+            >
+              {room.status === "paused" ? "▶" : "⏸"}
+            </button>
+          )}
+          <button
+            onClick={() => setGlossaryOpen(true)}
+            className="text-white/50 hover:text-white text-lg py-1.5 px-1"
+            title="Glossário de poker"
+          >
+            ?
+          </button>
           <button
             onClick={() => setStatsOpen((v) => !v)}
             className="text-white/50 hover:text-white text-lg py-1.5 px-1"
@@ -518,6 +559,10 @@ export default function RoomPage() {
               .map(([id, n]) => [id, n.text])
           )}
           onNoteClick={setEditingNoteFor}
+          emotes={emotes}
+          onSendEmote={handleSendEmote}
+          isHost={isHost}
+          onKick={handleKick}
         />
 
         {room.status === "waiting" && (
@@ -590,8 +635,25 @@ export default function RoomPage() {
         />
       )}
 
-      {yourTurn && you && room.phase !== "showdown" && (
+      {yourTurn && you && room.phase !== "showdown" && room.status !== "paused" && (
         <ActionBar room={room} you={you} onAction={handleAction} busy={busy} />
+      )}
+
+      {room.status === "paused" && (
+        <div className="fixed top-14 inset-x-0 z-20 flex justify-center px-4">
+          {isHost ? (
+            <button
+              onClick={handleTogglePause}
+              className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-amber-200 text-xs font-semibold rounded-full px-4 py-1.5 backdrop-blur transition"
+            >
+              ⏸ Mesa em pausa — clica para retomar
+            </button>
+          ) : (
+            <div className="bg-amber-500/15 border border-amber-400/40 text-amber-200 text-xs font-semibold rounded-full px-4 py-1.5 backdrop-blur pointer-events-none">
+              ⏸ Mesa em pausa pelo anfitrião
+            </div>
+          )}
+        </div>
       )}
 
       {!yourTurn && you && you.status === "active" && room.status === "playing" && room.phase !== "showdown" && (
@@ -631,6 +693,7 @@ export default function RoomPage() {
       )}
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <Glossary open={glossaryOpen} onClose={() => setGlossaryOpen(false)} />
 
       {editingNoteFor &&
         (() => {

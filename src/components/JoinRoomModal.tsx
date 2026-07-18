@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ApiError } from "@/lib/api";
 import { useSettings } from "@/lib/settings";
+import { AvatarPicker } from "./AvatarPicker";
+import { loadSavedAvatar, saveAvatar } from "@/lib/avatars";
 
 export function JoinRoomModal({
   open,
@@ -12,13 +14,14 @@ export function JoinRoomModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onJoin: (code: string, name: string, password?: string) => Promise<void>;
+  onJoin: (code: string, name: string, password?: string, avatarKey?: string) => Promise<void>;
   defaultName: string;
 }) {
   const [settings] = useSettings();
   const [name, setName] = useState(defaultName);
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
+  const [avatarKey, setAvatarKey] = useState<string | null>(null);
   const [needsPassword, setNeedsPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,6 +31,7 @@ export function JoinRoomModal({
       setName(defaultName);
       setCode("");
       setPassword("");
+      setAvatarKey(loadSavedAvatar());
       setNeedsPassword(false);
       setError("");
     }
@@ -48,7 +52,7 @@ export function JoinRoomModal({
     setBusy(true);
     setError("");
     try {
-      await onJoin(code.trim(), name.trim(), password || undefined);
+      await onJoin(code.trim(), name.trim(), password || undefined, avatarKey || undefined);
     } catch (e) {
       if (e instanceof ApiError && e.requiresPassword) setNeedsPassword(true);
       setError(e instanceof Error ? e.message : "Erro ao entrar na sala");
@@ -102,6 +106,13 @@ export function JoinRoomModal({
               className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 outline-none focus:border-[var(--gold)]/60 transition placeholder:text-white/20"
             />
           </div>
+          <AvatarPicker
+            value={avatarKey}
+            onChange={(v) => {
+              setAvatarKey(v);
+              saveAvatar(v);
+            }}
+          />
           <div>
             <label className="text-[11px] text-white/40 mb-1 block">Código da sala</label>
             <input
