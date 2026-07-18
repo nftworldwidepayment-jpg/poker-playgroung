@@ -81,7 +81,11 @@ export function PlayingCard({
 }) {
   const [settings] = useSettings();
   const widthClass = SIZES[size];
-  const Face = card ? (deck as Record<string, React.ComponentType<{ style?: React.CSSProperties }>>)[cardComponentKey(card)] : null;
+  const Face = card
+    ? (deck as Record<string, React.ComponentType<{ style?: React.CSSProperties; preserveAspectRatio?: string }>>)[
+        cardComponentKey(card)
+      ]
+    : null;
 
   const suit = card?.[1];
   let faceFilter: string | undefined;
@@ -109,7 +113,12 @@ export function PlayingCard({
             highlight ? "ring-2 ring-[var(--gold)]" : ""
           }`}
         >
-          {Face && <Face style={{ width: "100%", height: "100%", display: "block", filter: faceFilter }} />}
+          {Face && (
+            <Face
+              preserveAspectRatio="xMidYMid slice"
+              style={{ width: "100%", height: "100%", display: "block", filter: faceFilter }}
+            />
+          )}
         </div>
         <div className="absolute inset-0 overflow-hidden rounded-[9%] border border-[var(--gold)]/40 [backface-visibility:hidden] [transform:rotateY(180deg)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
