@@ -119,14 +119,15 @@ export function Seat({
       {!sittingOut && (
         <div className="flex gap-1.5 mb-1.5 items-start">
           {(holeCards || Array.from({ length: cardCount })).map((c, i) => (
-            <PlayingCard
-              key={i}
-              card={c as string | undefined}
-              hidden={!showCards}
-              size={isYou ? "xl" : "md"}
-              delay={i * 0.18}
-              highlight={isYou && showCards}
-            />
+            <div key={i} className={isYou ? "tilt-hover" : undefined}>
+              <PlayingCard
+                card={c as string | undefined}
+                hidden={!showCards}
+                size={isYou ? "xl" : "md"}
+                delay={i * 0.18}
+                highlight={isYou && showCards}
+              />
+            </div>
           ))}
         </div>
       )}
