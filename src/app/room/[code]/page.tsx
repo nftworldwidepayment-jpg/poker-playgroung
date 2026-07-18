@@ -415,7 +415,7 @@ export default function RoomPage() {
             onClick={copyInvite}
             className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-sm font-mono tracking-widest hover:border-amber-400/50 transition"
           >
-            {code} {copied ? "✓" : "📋"}
+            {code} {copied ? <span className="copy-check-pop inline-block text-emerald-400">✓</span> : "📋"}
           </button>
         </div>
         <div className="flex items-center gap-1 shrink-0 relative">

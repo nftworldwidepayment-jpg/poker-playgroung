@@ -41,6 +41,7 @@ export function Seat({
   isHost,
   onKick,
   onSendEmote,
+  isWinner,
 }: {
   player: PlayerRow;
   isYou: boolean;
@@ -62,6 +63,7 @@ export function Seat({
   isHost?: boolean;
   onKick?: () => void;
   onSendEmote?: (emoji: string) => void;
+  isWinner?: boolean;
 }) {
   const [settings] = useSettings();
   const avatarUrl = avatarSrc(player.avatar_key);
@@ -144,8 +146,15 @@ export function Seat({
         transition={{ duration: 1.8, repeat: isTurn ? Infinity : 0, ease: "easeInOut" }}
         className={`relative w-16 h-16 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-lg border-2 ${
           isTurn ? "border-amber-300" : isYou ? "border-cyan-300/80" : "border-white/20"
-        } ${folded || sittingOut ? "opacity-40 grayscale" : ""}`}
+        } ${folded ? "opacity-40 grayscale" : ""} ${sittingOut ? "opacity-60 sitting-out-sepia" : ""} ${
+          isWinner ? "win-glow" : ""
+        } ${isYou && isTurn ? "thinking-breathe" : ""}`}
       >
+        {player.is_host && (
+          <span className="host-crown" title="Anfitrião da mesa">
+            👑
+          </span>
+        )}
         {avatarUrl ? (
           <img src={avatarUrl} alt="" className="w-full h-full object-cover rounded-full select-none" draggable={false} />
         ) : (

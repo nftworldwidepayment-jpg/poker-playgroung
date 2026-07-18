@@ -99,3 +99,108 @@ html[data-contrast="high"] .text-white\/50,
 html[data-contrast="high"] .text-white\/60 {
   color: rgba(255, 255, 255, 0.85) !important;
 }
+
+/* respeita a preferência do SO por menos movimento, mesmo antes de o
+   jogador abrir as Definições e ligar "reduced motion" manualmente */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* micro-interação: qualquer botão "clicável" reage com um leve encolher +
+   brilho dourado momentâneo — sensação tátil sem precisar de DOM extra */
+button:not(:disabled) {
+  transition: transform var(--dur-micro) var(--ease-out-expo), filter var(--dur-micro) var(--ease-out-expo);
+}
+button:not(:disabled):active {
+  transform: scale(0.96);
+  filter: brightness(1.15);
+}
+
+/* hover 3D subtil em cartas e chips clicáveis — profundidade sem exagero */
+.tilt-hover {
+  transition: transform var(--dur-normal) var(--ease-out-expo);
+  transform-style: preserve-3d;
+}
+.tilt-hover:hover {
+  transform: perspective(600px) rotateX(4deg) rotateY(-4deg) translateY(-2px) scale(1.03);
+}
+
+/* selo de anfitrião (coroa) sobre o avatar do host */
+.host-crown {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  z-index: 21;
+}
+
+/* jogador "de fora" ganha um tom sépia envelhecido em vez de simples cinza */
+.sitting-out-sepia {
+  filter: sepia(0.55) saturate(0.7) brightness(0.85);
+}
+
+/* vinheta dourada pulsante à volta do avatar do vencedor da mão */
+@keyframes win-glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(201, 169, 97, 0.55); }
+  50% { box-shadow: 0 0 20px 6px rgba(227, 200, 138, 0.9); }
+}
+.win-glow {
+  animation: win-glow-pulse 1.1s ease-in-out infinite;
+}
+
+/* respiração subtil do avatar de quem está a pensar (a tua própria vez) */
+@keyframes think-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.025); }
+}
+.thinking-breathe {
+  animation: think-breathe 1.6s ease-in-out infinite;
+}
+
+/* vinheta escura nas bordas do ecrã quando alguém vai all-in — foca o olhar na mesa */
+@keyframes allin-vignette-fade {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.allin-vignette {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(217, 106, 106, 0.35) 100%);
+  animation: allin-vignette-fade 2.2s ease-out forwards;
+}
+
+/* copiar código da mesa: check verde que aparece por instantes */
+@keyframes copy-check-pop {
+  0% { opacity: 0; transform: scale(0.5); }
+  30% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.copy-check-pop {
+  animation: copy-check-pop 0.32s var(--ease-out-expo);
+}
+
+/* textura subtil de feltro — ruído muito ligeiro sobreposto ao verde da mesa */
+.felt-texture {
+  position: relative;
+}
+.felt-texture::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 3px 3px;
+  mix-blend-mode: overlay;
+  border-radius: inherit;
+}

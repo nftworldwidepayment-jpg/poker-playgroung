@@ -116,9 +116,24 @@ export function PokerTable({
   const visibleBoard = useStaggeredBoard(room);
   const youIdx = Math.max(0, ordered.findIndex((p) => p.id === youId));
   const [settings] = useSettings();
+  const allInKey = `${room.hand_number}:${ordered.filter((p) => p.status === "all_in").map((p) => p.id).join(",")}`;
+  const seenAllInKey = useRef<string | null>(null);
+  const [showAllInVignette, setShowAllInVignette] = useState(false);
+  useEffect(() => {
+    const hasAllIn = ordered.some((p) => p.status === "all_in");
+    if (hasAllIn && seenAllInKey.current !== allInKey && !settings.reducedMotion) {
+      seenAllInKey.current = allInKey;
+      setShowAllInVignette(true);
+      const t = setTimeout(() => setShowAllInVignette(false), 2200);
+      return () => clearTimeout(t);
+    }
+    seenAllInKey.current = allInKey;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allInKey]);
 
   return (
-    <div className="relative w-full aspect-[3/2] max-w-5xl mx-auto drop-shadow-[0_25px_60px_rgba(0,0,0,0.75)]">
+    <div className="relative w-full aspect-[3/2] max-w-5xl mx-auto drop-shadow-[0_25px_60px_rgba(0,0,0,0.75)] felt-texture">
+      {showAllInVignette && <div className="allin-vignette" />}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/images/table-bg.webp"
@@ -256,6 +271,7 @@ export function PokerTable({
             onSendEmote={onSendEmote ? (emoji) => onSendEmote(p.id, emoji) : undefined}
             isHost={isHost}
             onKick={onKick ? () => onKick(p.id) : undefined}
+            isWinner={room.phase === "showdown" && !!room.winners?.some((w) => w.playerId === p.id)}
           />
         );
       })}
