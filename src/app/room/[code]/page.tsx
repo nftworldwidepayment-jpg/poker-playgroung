@@ -37,11 +37,15 @@ export default function RoomPage() {
     { handNumber: number; board: string[]; winners: { name: string; amount: number; hand?: string }[] }[]
   >([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [biggestPot, setBiggestPot] = useState(0);
+  const [initialChips, setInitialChips] = useState<Record<string, number>>({});
   const [preAction, setPreAction] = useState<"fold" | "check_call" | null>(null);
   const lastActionKey = useRef<string>("");
   const lastHandFetched = useRef<number>(-1);
   const lastBoardLenBeforeShowdown = useRef<number>(0);
   const lastLoggedHand = useRef<number>(-1);
+  const lastStatsHand = useRef<number>(-1);
 
   function pushToast(message: string, tone: "error" | "info" = "error") {
     const id = ++toastSeq;
@@ -141,6 +145,32 @@ export default function RoomPage() {
       ].slice(0, 5)
     );
   }, [room?.phase, room?.winners, room?.hand_number, room?.community_cards]);
+
+  // baseline for the session stats panel: each player's chip count the first time
+  // we see them (so "net" reflects wins/losses since they sat down, not since the
+  // room was created — matters when someone joins mid-session)
+  useEffect(() => {
+    setInitialChips((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const p of players) {
+        if (!(p.id in next)) {
+          next[p.id] = p.chips;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [players]);
+
+  // track the single biggest pot won this session, for the stats panel
+  useEffect(() => {
+    if (!room || room.phase !== "showdown" || !room.winners?.length) return;
+    if (lastStatsHand.current === room.hand_number) return;
+    lastStatsHand.current = room.hand_number;
+    const total = room.winners.reduce((s, w) => s + w.amount, 0);
+    setBiggestPot((b) => Math.max(b, total));
+  }, [room?.phase, room?.winners, room?.hand_number]);
 
   useEffect(() => {
     if (room && you && room.current_turn_seat === you.seat) playTurn();
@@ -354,6 +384,13 @@ export default function RoomPage() {
             </button>
           )}
           <button
+            onClick={() => setStatsOpen((v) => !v)}
+            className="text-white/50 hover:text-white text-lg py-1.5 px-1"
+            title="Estatísticas da sessão"
+          >
+            📊
+          </button>
+          <button
             onClick={() => setHistoryOpen((v) => !v)}
             disabled={handHistory.length === 0}
             className="text-white/50 hover:text-white text-lg py-1.5 px-1 disabled:opacity-30"
@@ -394,6 +431,47 @@ export default function RoomPage() {
                       ))}
                     </div>
                   ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {statsOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                className="absolute top-10 right-0 z-30 w-64 bg-slate-900/95 backdrop-blur border border-amber-400/20 rounded-xl p-3 shadow-2xl"
+              >
+                <div className="text-[10px] uppercase tracking-widest text-amber-300/60 font-semibold mb-2">
+                  Estatísticas da sessão
+                </div>
+                <div className="flex justify-between text-xs text-white/50 mb-2 pb-2 border-b border-white/5">
+                  <span>Mãos jogadas: {room.hand_number}</span>
+                  {biggestPot > 0 && <span>Maior pote: {biggestPot.toLocaleString("pt-PT")}</span>}
+                </div>
+                <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
+                  {[...players]
+                    .sort((a, b) => b.chips - (initialChips[b.id] ?? b.chips) - (a.chips - (initialChips[a.id] ?? a.chips)))
+                    .map((p) => {
+                      const net = p.chips - (initialChips[p.id] ?? p.chips);
+                      return (
+                        <div key={p.id} className="flex items-center justify-between text-xs">
+                          <span className="text-white/70 truncate max-w-[110px]">
+                            {p.name} {p.id === you?.id && "(tu)"}
+                          </span>
+                          <span
+                            className={`font-mono tabular-nums ${
+                              net > 0 ? "text-emerald-400" : net < 0 ? "text-rose-400" : "text-white/40"
+                            }`}
+                          >
+                            {net > 0 ? "+" : ""}
+                            {net.toLocaleString("pt-PT")}
+                          </span>
+                        </div>
+                      );
+                    })}
                 </div>
               </motion.div>
             )}
