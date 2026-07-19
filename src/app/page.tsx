@@ -406,6 +406,7 @@ export default function Home() {
                   onChange={(e) => setBotName(e.target.value)}
                   maxLength={20}
                   placeholder="O teu nome"
+                  aria-label="O teu nome"
                   className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-cyan-400/50 transition"
                 />
 

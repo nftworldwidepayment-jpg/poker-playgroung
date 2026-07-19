@@ -129,6 +129,14 @@ export function PokerTable({
 }) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const total = Math.max(ordered.length, 1);
+  // the table's biggest stack gets a gold frame — only meaningful with more
+  // than one player still seated, and only once someone's actually ahead
+  // (skip it entirely on a freshly-started even-stacked table)
+  const maxChips = ordered.length > 1 ? Math.max(...ordered.map((p) => p.chips)) : -1;
+  const chipLeaderId =
+    maxChips > 0 && ordered.filter((p) => p.chips === maxChips).length === 1
+      ? ordered.find((p) => p.chips === maxChips)!.id
+      : null;
   // stable per-index style objects — seatPosition(i, total) is pure, but calling it
   // inline in the render loop below would hand every Seat a brand-new object every
   // render regardless of memoization, since object identity never matches by
@@ -297,6 +305,7 @@ export function PokerTable({
             isHost={isHost}
             onKick={onKick ? () => onKick(p.id) : undefined}
             isWinner={room.phase === "showdown" && !!room.winners?.some((w) => w.playerId === p.id)}
+            isChipLeader={p.id === chipLeaderId}
           />
         );
       })}

@@ -190,6 +190,15 @@ export function IconAlertTriangle(props: IconProps) {
   );
 }
 
+export function IconInfo(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.5M12 7.5h.01" />
+    </svg>
+  );
+}
+
 export function IconZap(props: IconProps) {
   return (
     <svg {...base(props)} fill="currentColor" stroke="none">

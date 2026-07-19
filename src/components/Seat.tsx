@@ -86,6 +86,7 @@ function SeatImpl({
   onKick,
   onSendEmote,
   isWinner,
+  isChipLeader,
 }: {
   player: PlayerRow;
   isYou: boolean;
@@ -109,6 +110,7 @@ function SeatImpl({
   onKick?: () => void;
   onSendEmote?: (emoji: string) => void;
   isWinner?: boolean;
+  isChipLeader?: boolean;
 }) {
   const [settings] = useSettings();
   const avatarUrl = avatarSrc(player.avatar_key);
@@ -190,11 +192,21 @@ function SeatImpl({
           isTurn ? "border-amber-300 turn-glow" : isYou ? "border-cyan-300/80" : "border-white/20"
         } ${folded ? "opacity-40 grayscale" : ""} ${sittingOut ? "opacity-60 sitting-out-sepia" : ""} ${
           isWinner ? "win-glow" : ""
-        } ${isYou && isTurn ? "thinking-breathe" : ""}`}
+        } ${isYou && isTurn ? "thinking-breathe" : ""} ${
+          isChipLeader ? "chip-leader-ring" : ""
+        }`}
       >
         {player.is_host && (
           <span className="host-crown text-amber-300" title="Anfitrião da mesa">
             <IconCrown size={13} />
+          </span>
+        )}
+        {isChipLeader && !player.is_host && (
+          <span
+            className="absolute -bottom-1 -right-1 z-10 w-4 h-4 rounded-full bg-[var(--gold)] border border-[var(--gold-bright)] flex items-center justify-center text-slate-900"
+            title="Maior stack da mesa"
+          >
+            <IconCrown size={9} />
           </span>
         )}
         {avatarUrl ? (

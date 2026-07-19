@@ -517,6 +517,7 @@ export default function RoomPage() {
             onChange={(e) => setJoinName(e.target.value)}
             maxLength={20}
             placeholder="O teu nome"
+                  aria-label="O teu nome"
             className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2.5 outline-none focus:border-amber-400/60 mb-3"
           />
           {joinError && <div className="text-rose-400 text-sm mb-2">{joinError}</div>}
@@ -588,7 +589,7 @@ export default function RoomPage() {
           {you && room.status !== "finished" && (
             <button
               onClick={handleToggleSitOut}
-              className={`py-1.5 px-1.5 rounded-lg ${you.wants_sit_out ? "text-amber-300" : "text-white/50 hover:text-white"}`}
+              className={`py-2 px-2 rounded-lg ${you.wants_sit_out ? "text-amber-300" : "text-white/50 hover:text-white"}`}
               title={you.wants_sit_out ? "Estou de volta" : "Sentar-me fora"}
               aria-label={you.wants_sit_out ? "Estou de volta" : "Sentar-me fora"}
             >
@@ -598,7 +599,7 @@ export default function RoomPage() {
           {isHost && (room.status === "playing" || room.status === "paused") && (
             <button
               onClick={handleTogglePause}
-              className={`py-1.5 px-1.5 rounded-lg ${room.status === "paused" ? "text-amber-300" : "text-white/50 hover:text-white"}`}
+              className={`py-2 px-2 rounded-lg ${room.status === "paused" ? "text-amber-300" : "text-white/50 hover:text-white"}`}
               title={room.status === "paused" ? "Retomar mesa" : "Pausar mesa"}
               aria-label={room.status === "paused" ? "Retomar mesa" : "Pausar mesa"}
             >
@@ -607,7 +608,7 @@ export default function RoomPage() {
           )}
           <button
             onClick={() => setGlossaryOpen(true)}
-            className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
+            className="text-white/50 hover:text-white py-2 px-2 rounded-lg"
             title="Glossário de poker"
             aria-label="Glossário de poker"
           >
@@ -615,7 +616,7 @@ export default function RoomPage() {
           </button>
           <button
             onClick={() => setStatsOpen((v) => !v)}
-            className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
+            className="text-white/50 hover:text-white py-2 px-2 rounded-lg"
             title="Estatísticas da sessão"
             aria-label="Estatísticas da sessão"
           >
@@ -624,7 +625,7 @@ export default function RoomPage() {
           <button
             onClick={() => setHistoryOpen((v) => !v)}
             disabled={handHistory.length === 0}
-            className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg disabled:opacity-30"
+            className="text-white/50 hover:text-white py-2 px-2 rounded-lg disabled:opacity-30"
             title="Histórico de mãos"
             aria-label="Histórico de mãos"
           >
@@ -632,7 +633,7 @@ export default function RoomPage() {
           </button>
           <button
             onClick={toggleSound}
-            className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
+            className="text-white/50 hover:text-white py-2 px-2 rounded-lg"
             title={settings.sound ? "Desligar som" : "Ligar som"}
             aria-label={settings.sound ? "Desligar som" : "Ligar som"}
           >
@@ -640,7 +641,7 @@ export default function RoomPage() {
           </button>
           <button
             onClick={() => setSettingsOpen(true)}
-            className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
+            className="text-white/50 hover:text-white py-2 px-2 rounded-lg"
             title="Definições"
             aria-label="Definições"
           >
