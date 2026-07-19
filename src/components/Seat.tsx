@@ -119,7 +119,12 @@ function SeatImpl({
   const cardCount = holeCards?.length || 2;
 
   return (
-    <div className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5" style={style}>
+    <div className="absolute -translate-x-1/2 -translate-y-1/2" style={style}>
+    {/* crowded tables (7-9 handed) shrink every seat uniformly via --seat-scale
+        (set per-seat in PokerTable's seatPosition) so avatars/cards stop
+        overlapping their neighbours — scaling this inner wrapper instead of
+        the outer positioned div keeps the anchor point itself unmoved. */}
+    <div className="flex flex-col items-center gap-1.5" style={{ transform: "scale(var(--seat-scale, 1))" }}>
       {isDealer && (
         <motion.div
           layoutId="dealer-button"
@@ -181,7 +186,7 @@ function SeatImpl({
       )}
 
       <div
-        className={`relative w-16 h-16 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-lg border-2 ${
+        className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-base sm:text-lg border-2 ${
           isTurn ? "border-amber-300 turn-glow" : isYou ? "border-cyan-300/80" : "border-white/20"
         } ${folded ? "opacity-40 grayscale" : ""} ${sittingOut ? "opacity-60 sitting-out-sepia" : ""} ${
           isWinner ? "win-glow" : ""
@@ -298,6 +303,7 @@ function SeatImpl({
       </AnimatePresence>
 
       {isYou && onSendEmote && <EmoteTrigger onSend={onSendEmote} />}
+    </div>
     </div>
   );
 }

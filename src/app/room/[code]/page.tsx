@@ -94,24 +94,50 @@ export default function RoomPage() {
     if (!room?.turn_expires_at) return;
     const t = setInterval(() => {
       api.timeout(code).catch(() => {});
-    }, 2000);
+    }, 1200);
     return () => clearInterval(t);
   }, [code, room?.turn_expires_at]);
+
+  // the current actor, as a stable primitive pair rather than the whole
+  // `players` array — every action anywhere in the hand re-writes every
+  // player row (saveCtx updates all of them, chips or not), which fires a
+  // Realtime UPDATE for each one and hands useRoom a brand-new `players`
+  // array; keying the bot-tick effect off that array meant an unrelated
+  // ripple (e.g. someone toggling sit-out for next hand) could tear down and
+  // re-arm the "think" timer before it ever fired, stalling a bot's turn.
+  const actorId = players.find((p) => p.seat === room?.current_turn_seat)?.id ?? null;
+  const actorIsBot = !!players.find((p) => p.seat === room?.current_turn_seat)?.is_bot;
 
   // when it's a bot's turn, let it "think" for a beat (same thinking-dots
   // animation a human would trigger) then have any connected client ask the
   // server to compute and apply its move — the decision itself runs entirely
   // server-side in bot_tick, this is just the trigger.
   useEffect(() => {
-    if (!room || room.status !== "playing") return;
-    const actor = players.find((p) => p.seat === room.current_turn_seat);
-    if (!actor?.is_bot) return;
+    if (!room || room.status !== "playing" || !actorIsBot) return;
     const delay = 700 + Math.random() * 900;
     const t = setTimeout(() => {
       api.botTick(code).catch(() => {});
     }, delay);
     return () => clearTimeout(t);
-  }, [code, room?.current_turn_seat, room?.status, players]);
+  }, [code, actorId, actorIsBot, room?.status]);
+
+  // a backgrounded/locked phone throttles or fully suspends JS timers, so the
+  // interval-based timeout/bot-tick nudges above can silently stop firing —
+  // catch back up the instant the tab is foregrounded again instead of
+  // waiting for the next scheduled tick (which can be seconds away).
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      api.timeout(code).catch(() => {});
+      api.botTick(code).catch(() => {});
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [code]);
 
   const you = useMemo(() => players.find((p) => p.id === session?.playerId) || null, [players, session]);
   const isHost = !!you?.is_host;

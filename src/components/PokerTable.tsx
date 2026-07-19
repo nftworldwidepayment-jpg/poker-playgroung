@@ -57,19 +57,34 @@ const PHASE_LABEL: Record<string, string> = {
   showdown: "Showdown",
 };
 
+// A 9-handed mobile table with every seat at full size badly overlaps
+// neighbouring avatars/cards (confirmed by rendering it) — there just isn't
+// room. Shrinking every seat uniformly as the table fills up (via a CSS
+// scale on the seat's own wrapper, see Seat.tsx) keeps them all readable
+// instead of stacking on top of each other.
+function seatScale(total: number): number {
+  if (total <= 4) return 1;
+  if (total <= 6) return 0.92;
+  if (total === 7) return 0.85;
+  if (total === 8) return 0.79;
+  return 0.73; // 9
+}
+
 // index 0 always sits at the bottom-center (angle = +90deg), wrapping clockwise from there —
 // callers pass a seat index already rotated so that "you" is index 0, keeping your own seat
 // facing the camera no matter which physical seat number you're sitting in.
 function seatPosition(index: number, total: number): React.CSSProperties {
   const angle = (Math.PI * 2 * index) / total + Math.PI / 2;
-  const rx = 40;
+  // slightly wider spread for crowded tables, since shrunk seats leave more
+  // room to actually use before running off the felt's edge
+  const rx = total <= 6 ? 40 : 43;
   // taller than rx on purpose: each seat's own card/avatar/name column extends
   // well above its anchor point, so it needs more clearance from the vertical
   // center (community cards + pot) than it does from the left/right edges.
-  const ry = 46;
+  const ry = total <= 6 ? 46 : 48;
   const left = 50 + rx * Math.cos(angle);
   const top = 50 + ry * Math.sin(angle);
-  return { left: `${left}%`, top: `${top}%` };
+  return { left: `${left}%`, top: `${top}%`, ["--seat-scale" as string]: seatScale(total) } as React.CSSProperties;
 }
 
 function positionLabel(seat: number, dealerSeat: number | null, total: number): string | null {

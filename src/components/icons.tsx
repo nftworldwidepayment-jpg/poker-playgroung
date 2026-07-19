@@ -122,11 +122,19 @@ export function IconVolumeX(props: IconProps) {
   );
 }
 
+// A filled 8-tooth gear (not a stroked outline like the rest of the set) — the
+// earlier stroke-path attempt had a coordinate error that made the teeth blob
+// together into a lumpy circle instead of reading as a gear. Built from a
+// straight-edged tooth polygon plus an evenodd inner hole, verified by
+// rendering it and visually confirming clean, separated teeth.
 export function IconSettings(props: IconProps) {
+  const { size = 18, ...rest } = props;
   return (
-    <svg {...base(props)}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 13a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V19a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H4a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.5V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V10a1.7 1.7 0 0 0 1.5 1H20a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...rest}>
+      <path
+        fillRule="evenodd"
+        d="M10.45 5.07 9.91 2.63h4.18l-.54 2.44 2.25.94 1.34-2.12 2.97 2.97-2.12 1.34.94 2.25 2.44-.54v4.18l-2.44-.54-.94 2.25 2.12 1.34-2.97 2.97-1.34-2.12-2.25.94.54 2.44H9.91l.54-2.44-2.25-.94-1.34 2.12-2.97-2.97 2.12-1.34-.94-2.25-2.44.54V9.91l2.44.54.94-2.25-2.12-1.34 2.97-2.97 1.34 2.12 2.25-.94ZM12 8.8a3.2 3.2 0 1 0 .01 0Z"
+      />
     </svg>
   );
 }
