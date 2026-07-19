@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { api, saveSession, loadLatestSession, loadAllSessions, Session, CreateRoomOptions } from "@/lib/api";
 import { Splash } from "@/components/Splash";
 import { SettingsModal } from "@/components/SettingsModal";
@@ -101,12 +101,17 @@ export default function Home() {
   const [canQuickCreate, setCanQuickCreate] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [allSessions, setAllSessions] = useState<Session[]>([]);
+  const [mode, setMode] = useState<"friends" | "bot">("friends");
+  const [botBusy, setBotBusy] = useState<string | null>(null);
+  const [botError, setBotError] = useState("");
+  const [botName, setBotName] = useState("");
 
   useEffect(() => {
     setLastSession(loadLatestSession());
     setAllSessions(loadAllSessions());
     const name = loadSavedName();
     setPlayerName(name);
+    setBotName(name);
     setCanQuickCreate(!!name && !!localStorage.getItem("poker-create-prefs-v1"));
   }, []);
 
@@ -150,6 +155,34 @@ export default function Home() {
     } catch (e) {
       setQuickError(e instanceof Error ? e.message : "Erro ao criar mesa");
       setQuickBusy(false);
+    }
+  }
+
+  async function handlePlayVsBot(difficulty: "easy" | "medium" | "hard") {
+    const name = botName.trim();
+    if (!name) {
+      setBotError("Escreve o teu nome");
+      return;
+    }
+    setBotBusy(difficulty);
+    setBotError("");
+    try {
+      const res = await api.createRoom({
+        name,
+        tableName: "Mesa vs Bot",
+        smallBlind: 10,
+        bigBlind: 20,
+        buyIn: 1000,
+        gameType: "nlhe",
+        maxPlayers: 2,
+      });
+      saveSession({ code: res.code, playerId: res.playerId, token: res.token, name });
+      saveName(name);
+      await api.addBot(res.playerId, res.token, difficulty);
+      router.push(`/room/${res.code}`);
+    } catch (e) {
+      setBotError(e instanceof Error ? e.message : "Erro ao criar mesa contra o bot");
+      setBotBusy(null);
     }
   }
 
@@ -201,13 +234,13 @@ export default function Home() {
       >
         <div className="text-center mb-8">
           <motion.div
-            initial={{ opacity: 0, scale: 0.7 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1, type: "spring", stiffness: 160, damping: 14 }}
-            className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.3em] text-amber-300/70 font-semibold mb-3 border border-amber-400/20 rounded-full px-3 py-1 bg-amber-400/[0.04]"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="relative inline-block mb-2"
           >
-            <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-            Tempo real · Grátis · Com os amigos
+            <span className="absolute inset-0 blur-2xl bg-amber-400/20 rounded-full scale-150" aria-hidden />
+            <span className="relative text-4xl">🃏</span>
           </motion.div>
 
           <h1 className="relative font-serif text-5xl sm:text-6xl font-black tracking-tight leading-none">
@@ -223,7 +256,7 @@ export default function Home() {
             ))}
           </div>
           <p className="text-white/45 text-sm mt-3 font-serif italic">
-            Texas Hold&apos;em &amp; PLO4 em tempo real — a tua mesa, os teus amigos, em qualquer lugar.
+            Texas Hold&apos;em &amp; PLO4 — com amigos, ou sozinho contra o computador.
           </p>
         </div>
 
@@ -249,52 +282,151 @@ export default function Home() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.5 }}
-          className="relative bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-[1.75rem] p-6 sm:p-7 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)] flex flex-col gap-3"
+          className="relative bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-[1.75rem] p-2 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)]"
         >
           <div className="pointer-events-none absolute inset-0 rounded-[1.75rem] border border-white/[0.06] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
 
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setCreateOpen(true)}
-            className="group relative w-full py-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-900 font-bold shadow-[0_10px_30px_-8px_rgba(245,158,11,0.6)] overflow-hidden"
-          >
-            <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-            <span className="relative text-base">♠ Criar Mesa</span>
-          </motion.button>
-
-          {canQuickCreate && (
+          {/* segmented tabs: friends (gold) vs. bot (cyan) — distinct accent per mode
+              so it visually reads as two different experiences, not one crowded form */}
+          <div className="relative flex gap-1 p-1 mb-1">
             <button
-              onClick={handleQuickCreate}
-              disabled={quickBusy}
-              className="text-[11px] text-white/40 hover:text-[var(--gold-bright)] transition disabled:opacity-50 -mt-1"
+              onClick={() => setMode("friends")}
+              className={`relative flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+                mode === "friends" ? "text-slate-900" : "text-white/50 hover:text-white/80"
+              }`}
             >
-              {quickBusy ? "A criar..." : "⚡ Rápido — usar últimas definições"}
+              {mode === "friends" && (
+                <motion.span
+                  layoutId="home-tab-bg"
+                  transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500"
+                />
+              )}
+              <span className="relative">♠ Com Amigos</span>
             </button>
-          )}
-          {quickError && <div className="text-[var(--danger)] text-xs -mt-1">{quickError}</div>}
-
-          <div className="flex items-center gap-3 my-1">
-            <span className="flex-1 h-px bg-white/10" />
-            <span className="text-[10px] uppercase tracking-widest text-white/25">ou</span>
-            <span className="flex-1 h-px bg-white/10" />
+            <button
+              onClick={() => setMode("bot")}
+              className={`relative flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+                mode === "bot" ? "text-slate-900" : "text-white/50 hover:text-white/80"
+              }`}
+            >
+              {mode === "bot" && (
+                <motion.span
+                  layoutId="home-tab-bg"
+                  transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-400 to-cyan-500"
+                />
+              )}
+              <span className="relative">🤖 Contra Bot</span>
+            </button>
           </div>
 
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setJoinOpen(true)}
-            className="w-full py-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 text-white/80 font-semibold transition"
-          >
-            Entrar em Sala
-          </motion.button>
-        </motion.div>
+          <AnimatePresence mode="wait">
+            {mode === "friends" ? (
+              <motion.div
+                key="friends"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.18 }}
+                className="flex flex-col gap-3 p-5 sm:p-6 pt-3"
+              >
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setCreateOpen(true)}
+                  className="group relative w-full py-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-900 font-bold shadow-[0_10px_30px_-8px_rgba(245,158,11,0.6)] overflow-hidden"
+                >
+                  <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                  <span className="relative text-base">♠ Criar Mesa</span>
+                </motion.button>
 
-        <div className="flex items-center justify-center gap-4 mt-6 text-white/30 text-[11px]">
-          <span className="flex items-center gap-1">⚡ Tempo real</span>
-          <span className="w-1 h-1 rounded-full bg-white/15" />
-          <span className="flex items-center gap-1">🎁 100% grátis</span>
-          <span className="w-1 h-1 rounded-full bg-white/15" />
-          <span className="flex items-center gap-1">📱 Qualquer dispositivo</span>
-        </div>
+                {canQuickCreate && (
+                  <button
+                    onClick={handleQuickCreate}
+                    disabled={quickBusy}
+                    className="text-[11px] text-white/40 hover:text-[var(--gold-bright)] transition disabled:opacity-50 -mt-1"
+                  >
+                    {quickBusy ? "A criar..." : "⚡ Rápido — usar últimas definições"}
+                  </button>
+                )}
+                {quickError && <div className="text-[var(--danger)] text-xs -mt-1">{quickError}</div>}
+
+                <div className="flex items-center gap-3 my-1">
+                  <span className="flex-1 h-px bg-white/10" />
+                  <span className="text-[10px] uppercase tracking-widest text-white/25">ou</span>
+                  <span className="flex-1 h-px bg-white/10" />
+                </div>
+
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setJoinOpen(true)}
+                  className="w-full py-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 text-white/80 font-semibold transition"
+                >
+                  Entrar em Sala
+                </motion.button>
+
+                <div className="flex items-center justify-center gap-4 mt-2 text-white/30 text-[11px]">
+                  <span className="flex items-center gap-1">⚡ Tempo real</span>
+                  <span className="w-1 h-1 rounded-full bg-white/15" />
+                  <span className="flex items-center gap-1">🎁 100% grátis</span>
+                  <span className="w-1 h-1 rounded-full bg-white/15" />
+                  <span className="flex items-center gap-1">📱 Qualquer dispositivo</span>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="bot"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.18 }}
+                className="flex flex-col gap-3 p-5 sm:p-6 pt-3"
+              >
+                <p className="text-center text-white/40 text-xs -mt-1 mb-1">
+                  Treina sozinho contra um oponente artificial — escolhe a dificuldade.
+                </p>
+
+                <input
+                  value={botName}
+                  onChange={(e) => setBotName(e.target.value)}
+                  maxLength={20}
+                  placeholder="O teu nome"
+                  className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-cyan-400/50 transition"
+                />
+
+                <div className="flex flex-col gap-2">
+                  {(
+                    [
+                      { id: "easy", label: "Fácil", desc: "Chama muito, quase nunca sobe — ideal para aprender", icon: "🌱" },
+                      { id: "medium", label: "Médio", desc: "Joga sólido: respeita pot odds, blefa às vezes", icon: "⚔️" },
+                      { id: "hard", label: "Difícil", desc: "Estilo profissional: agressivo, blefa, joga por posição", icon: "🔥" },
+                    ] as const
+                  ).map((d) => (
+                    <motion.button
+                      key={d.id}
+                      whileTap={{ scale: 0.98 }}
+                      disabled={!!botBusy}
+                      onClick={() => handlePlayVsBot(d.id)}
+                      className="group relative flex items-center gap-3 w-full text-left py-3 px-4 rounded-xl bg-white/5 hover:bg-cyan-400/10 border border-white/10 hover:border-cyan-400/40 transition disabled:opacity-50"
+                    >
+                      <span className="text-2xl shrink-0">{d.icon}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-semibold text-white/85 group-hover:text-cyan-200">
+                          {d.label}
+                        </span>
+                        <span className="block text-[11px] text-white/40 truncate">{d.desc}</span>
+                      </span>
+                      <span className="text-cyan-300/60 text-sm shrink-0">
+                        {botBusy === d.id ? "…" : "→"}
+                      </span>
+                    </motion.button>
+                  ))}
+                </div>
+                {botError && <div className="text-[var(--danger)] text-xs text-center">{botError}</div>}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         {allSessions.length > 0 && (
           <div className="mt-3 text-center">
