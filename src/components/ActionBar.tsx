@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PlayerRow, RoomRow } from "@/lib/types";
 import { ChipStack } from "./Chip";
+import { IconAlertTriangle } from "./icons";
 
 const fmt = (n: number) => n.toLocaleString("pt-PT");
 const fmtBB = (n: number, bb: number) => {
@@ -249,8 +250,8 @@ export function ActionBar({
             </div>
 
             {stackFraction > 0.5 && (
-              <div className="text-[10px] text-orange-300/80 text-center">
-                ⚠ Este sizing compromete {Math.round(stackFraction * 100)}% do teu stack
+              <div className="text-[10px] text-orange-300/80 text-center inline-flex items-center justify-center gap-1 w-full">
+                <IconAlertTriangle size={11} /> Este sizing compromete {Math.round(stackFraction * 100)}% do teu stack
               </div>
             )}
           </div>

@@ -1,5 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
+import { IconClose } from "./icons";
 
 const TERMS: { term: string; def: string }[] = [
   { term: "Blind (SB/BB)", def: "Apostas obrigatórias postadas antes de ver as cartas, para forçar ação." },
@@ -32,7 +33,7 @@ export function Glossary({ open, onClose }: { open: boolean; onClose: () => void
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/50 hover:text-white flex items-center justify-center"
           >
-            ✕
+            <IconClose size={14} />
           </button>
         </div>
         <div className="flex flex-col gap-3">

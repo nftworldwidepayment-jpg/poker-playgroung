@@ -15,6 +15,21 @@ import { useSettings } from "@/lib/settings";
 import { handStrengthLabel } from "@/lib/handStrength";
 import { loadNotes, saveNote, PlayerNote, TAG_META } from "@/lib/notes";
 import { playCheck, playChip, playDeal, playFold, playTurn, playWin, playYourAction, setSoundEnabled } from "@/lib/sounds";
+import {
+  IconArmchair,
+  IconArrowLeft,
+  IconBarChart,
+  IconCards,
+  IconCheck,
+  IconClipboard,
+  IconHelpCircle,
+  IconHistory,
+  IconPause,
+  IconPlay,
+  IconSettings,
+  IconVolume2,
+  IconVolumeX,
+} from "@/components/icons";
 
 let toastSeq = 0;
 
@@ -356,7 +371,9 @@ export default function RoomPage() {
         <div className="relative w-14 h-14">
           <div className="absolute inset-0 rounded-full border-2 border-amber-400/15" />
           <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-amber-400 animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center text-lg">🃏</div>
+          <div className="absolute inset-0 flex items-center justify-center text-amber-300">
+            <IconCards size={20} />
+          </div>
         </div>
         <div className="text-sm font-serif tracking-wide">A carregar mesa...</div>
       </div>
@@ -379,7 +396,9 @@ export default function RoomPage() {
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="w-full max-w-sm bg-white/5 border border-white/10 rounded-2xl p-6">
           <div className="text-center mb-4">
-            <div className="text-3xl mb-1">🃏</div>
+            <div className="flex justify-center mb-1 text-amber-300">
+              <IconCards size={28} />
+            </div>
             <div className="text-lg font-bold">Entrar na sala {code}</div>
           </div>
           <input
@@ -417,8 +436,11 @@ export default function RoomPage() {
       <ToastStack toasts={toasts} />
 
       <div className="flex items-center justify-between px-3 py-3 z-20 gap-2">
-        <button onClick={() => router.push("/")} className="text-white/50 hover:text-white text-sm shrink-0 py-1.5 px-1">
-          ← Sair
+        <button
+          onClick={() => router.push("/")}
+          className="text-white/50 hover:text-white text-sm shrink-0 py-1.5 px-1 inline-flex items-center gap-1"
+        >
+          <IconArrowLeft size={14} /> Sair
         </button>
         <div className="flex items-center gap-2">
           {room.table_name && (
@@ -438,59 +460,66 @@ export default function RoomPage() {
             onClick={copyInvite}
             className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-sm font-mono tracking-widest hover:border-amber-400/50 transition"
           >
-            {code} {copied ? <span className="copy-check-pop inline-block text-emerald-400">✓</span> : "📋"}
+            {code}{" "}
+            {copied ? (
+              <span className="copy-check-pop inline-flex text-emerald-400">
+                <IconCheck size={14} />
+              </span>
+            ) : (
+              <IconClipboard size={14} />
+            )}
           </button>
         </div>
         <div className="flex items-center gap-1 shrink-0 relative">
           {you && room.status !== "finished" && (
             <button
               onClick={handleToggleSitOut}
-              className={`text-lg py-1.5 px-1 ${you.wants_sit_out ? "text-amber-300" : "text-white/50 hover:text-white"}`}
+              className={`py-1.5 px-1.5 rounded-lg ${you.wants_sit_out ? "text-amber-300" : "text-white/50 hover:text-white"}`}
               title={you.wants_sit_out ? "Estou de volta" : "Sentar-me fora"}
             >
-              {you.wants_sit_out ? "🙋" : "🪑"}
+              <IconArmchair size={18} active={you.wants_sit_out} />
             </button>
           )}
           {isHost && (room.status === "playing" || room.status === "paused") && (
             <button
               onClick={handleTogglePause}
-              className={`text-lg py-1.5 px-1 ${room.status === "paused" ? "text-amber-300" : "text-white/50 hover:text-white"}`}
+              className={`py-1.5 px-1.5 rounded-lg ${room.status === "paused" ? "text-amber-300" : "text-white/50 hover:text-white"}`}
               title={room.status === "paused" ? "Retomar mesa" : "Pausar mesa"}
             >
-              {room.status === "paused" ? "▶" : "⏸"}
+              {room.status === "paused" ? <IconPlay size={18} /> : <IconPause size={18} />}
             </button>
           )}
           <button
             onClick={() => setGlossaryOpen(true)}
-            className="text-white/50 hover:text-white text-lg py-1.5 px-1"
+            className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
             title="Glossário de poker"
           >
-            ?
+            <IconHelpCircle size={18} />
           </button>
           <button
             onClick={() => setStatsOpen((v) => !v)}
-            className="text-white/50 hover:text-white text-lg py-1.5 px-1"
+            className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
             title="Estatísticas da sessão"
           >
-            📊
+            <IconBarChart size={18} />
           </button>
           <button
             onClick={() => setHistoryOpen((v) => !v)}
             disabled={handHistory.length === 0}
-            className="text-white/50 hover:text-white text-lg py-1.5 px-1 disabled:opacity-30"
+            className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg disabled:opacity-30"
             title="Histórico de mãos"
           >
-            📜
+            <IconHistory size={18} />
           </button>
-          <button onClick={toggleSound} className="text-white/50 hover:text-white text-lg py-1.5 px-1">
-            {settings.sound ? "🔊" : "🔇"}
+          <button onClick={toggleSound} className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg">
+            {settings.sound ? <IconVolume2 size={18} /> : <IconVolumeX size={18} />}
           </button>
           <button
             onClick={() => setSettingsOpen(true)}
-            className="text-white/50 hover:text-white text-lg py-1.5 px-1"
+            className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
             title="Definições"
           >
-            ⚙
+            <IconSettings size={18} />
           </button>
           <AnimatePresence>
             {historyOpen && (
@@ -723,7 +752,13 @@ export default function RoomPage() {
                 preAction === "fold" ? "bg-rose-600 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"
               }`}
             >
-              {preAction === "fold" ? "✓ Vou desistir" : "Desistir (pré-ação)"}
+              {preAction === "fold" ? (
+                <span className="inline-flex items-center gap-1">
+                  <IconCheck size={12} /> Vou desistir
+                </span>
+              ) : (
+                "Desistir (pré-ação)"
+              )}
             </button>
             <button
               onClick={() => setPreAction((p) => (p === "check_call" ? null : "check_call"))}
@@ -731,7 +766,13 @@ export default function RoomPage() {
                 preAction === "check_call" ? "bg-sky-600 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"
               }`}
             >
-              {preAction === "check_call" ? "✓ Vou pagar/passar" : "Passar/Pagar (pré-ação)"}
+              {preAction === "check_call" ? (
+                <span className="inline-flex items-center gap-1">
+                  <IconCheck size={12} /> Vou pagar/passar
+                </span>
+              ) : (
+                "Passar/Pagar (pré-ação)"
+              )}
             </button>
           </div>
         </div>

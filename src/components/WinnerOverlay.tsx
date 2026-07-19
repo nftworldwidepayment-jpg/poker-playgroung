@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import { RoomRow } from "@/lib/types";
 import { PlayingCard } from "./PlayingCard";
+import { IconEye } from "./icons";
 
 function MiniBoard({ label, cards }: { label: string; cards: string[] }) {
   return (
@@ -68,9 +69,9 @@ export function WinnerOverlay({
         {canShowHand && (
           <button
             onClick={onShowHand}
-            className="mt-3 w-full text-xs py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 transition"
+            className="mt-3 w-full text-xs py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 transition inline-flex items-center justify-center gap-1.5"
           >
-            👁 Mostrar a minha mão
+            <IconEye size={14} /> Mostrar a minha mão
           </button>
         )}
 

@@ -1,6 +1,7 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { Settings, useSettings } from "@/lib/settings";
+import { IconClose } from "./icons";
 
 function Toggle({
   label,
@@ -63,8 +64,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           >
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-serif text-xl font-bold text-[var(--text-warm)]">Definições</h2>
-              <button onClick={onClose} className="text-white/40 hover:text-white text-lg leading-none px-1">
-                ✕
+              <button onClick={onClose} className="text-white/40 hover:text-white px-1">
+                <IconClose size={16} />
               </button>
             </div>
 

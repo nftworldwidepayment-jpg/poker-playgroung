@@ -8,6 +8,7 @@ import { AvatarPicker } from "./AvatarPicker";
 import { useSettings } from "@/lib/settings";
 import { loadSavedAvatar, saveAvatar } from "@/lib/avatars";
 import { playCheck, playChip, playYourAction } from "@/lib/sounds";
+import { IconCheck, IconClose, IconDice } from "./icons";
 
 const PREFS_KEY = "poker-create-prefs-v1";
 
@@ -318,9 +319,9 @@ export function CreateTableModal({
                 initial={{ scale: 0.4, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold-deep)] flex items-center justify-center text-2xl text-slate-900 shadow-[0_0_40px_rgba(201,169,97,0.5)]"
+                className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold-deep)] flex items-center justify-center text-slate-900 shadow-[0_0_40px_rgba(201,169,97,0.5)]"
               >
-                ✓
+                <IconCheck size={28} />
               </motion.div>
               <div className="text-white/70 font-serif">Mesa criada — a entrar...</div>
             </motion.div>
@@ -336,7 +337,7 @@ export function CreateTableModal({
                   aria-label="Fechar"
                   className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/50 hover:text-white transition flex items-center justify-center shrink-0"
                 >
-                  ✕
+                  <IconClose size={16} />
                 </button>
               </div>
 
@@ -401,7 +402,7 @@ export function CreateTableModal({
                           }}
                           className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/50 hover:text-[var(--gold)] transition"
                         >
-                          🎲
+                          <IconDice size={16} />
                         </button>
                       </div>
                     </div>

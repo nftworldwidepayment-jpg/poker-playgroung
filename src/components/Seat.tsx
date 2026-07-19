@@ -7,6 +7,7 @@ import { ChipStack } from "./Chip";
 import { CountUp } from "./CountUp";
 import { useSettings } from "@/lib/settings";
 import { avatarSrc } from "@/lib/avatars";
+import { IconAlertCircle, IconBot, IconClose, IconCrown, IconFlame, IconFrown, IconSmile, IconThumbsUp } from "./icons";
 
 const AVATAR_COLORS = [
   "from-fuchsia-500 to-purple-600",
@@ -137,23 +138,26 @@ function SeatImpl({
         <button
           onClick={onKick}
           title="Remover jogador (entre mãos)"
-          className="absolute -top-2 right-6 z-20 w-5 h-5 rounded-full bg-rose-900/80 hover:bg-rose-700 border border-rose-400/40 text-rose-200 text-[10px] flex items-center justify-center"
+          className="absolute -top-2 right-6 z-20 w-5 h-5 rounded-full bg-rose-900/80 hover:bg-rose-700 border border-rose-400/40 text-rose-200 flex items-center justify-center"
         >
-          ✕
+          <IconClose size={11} />
         </button>
       )}
 
       <AnimatePresence>
-        {emote && (
+        {emote && EMOTE_ICONS[emote] && (
           <motion.div
             key={emote + Date.now()}
             initial={{ opacity: 0, y: 0, scale: 0.5 }}
             animate={{ opacity: 1, y: -50, scale: 1.4 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1.6, ease: "easeOut" }}
-            className="absolute top-0 z-30 text-2xl pointer-events-none"
+            className="absolute top-0 z-30 pointer-events-none text-amber-300"
           >
-            {emote}
+            {(() => {
+              const Icon = EMOTE_ICONS[emote];
+              return <Icon size={26} />;
+            })()}
           </motion.div>
         )}
       </AnimatePresence>
@@ -184,8 +188,8 @@ function SeatImpl({
         } ${isYou && isTurn ? "thinking-breathe" : ""}`}
       >
         {player.is_host && (
-          <span className="host-crown" title="Anfitrião da mesa">
-            👑
+          <span className="host-crown text-amber-300" title="Anfitrião da mesa">
+            <IconCrown size={13} />
           </span>
         )}
         {avatarUrl ? (
@@ -238,7 +242,11 @@ function SeatImpl({
       >
         <div className={`text-xs font-serif font-semibold ${isYou ? "text-cyan-300" : "text-amber-50/90"} max-w-[100px] truncate flex items-center justify-center gap-1`}>
           {noteDotColor && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${noteDotColor}`} />}
-          {player.is_bot && <span title={`Bot — ${player.bot_difficulty || "medium"}`}>🤖</span>}
+          {player.is_bot && (
+            <span title={`Bot — ${player.bot_difficulty || "medium"}`} className="shrink-0">
+              <IconBot size={12} />
+            </span>
+          )}
           {player.name} {isYou && "(tu)"}
         </div>
         <div className="text-[11px] text-amber-300 font-mono tabular-nums">
@@ -300,7 +308,16 @@ function SeatImpl({
 // work every time anything in the room changes.
 export const Seat = memo(SeatImpl);
 
-const QUICK_EMOTES = ["👍", "😮", "🔥", "😢"];
+// Keyed reactions instead of raw emoji characters — same feature (quick
+// non-verbal reactions at the table), rendered with the app's own icon set
+// instead of platform emoji glyphs.
+const EMOTE_ICONS: Record<string, typeof IconThumbsUp> = {
+  like: IconThumbsUp,
+  wow: IconAlertCircle,
+  fire: IconFlame,
+  sad: IconFrown,
+};
+const QUICK_EMOTES = ["like", "wow", "fire", "sad"];
 
 function EmoteTrigger({ onSend }: { onSend: (e: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -314,27 +331,30 @@ function EmoteTrigger({ onSend }: { onSend: (e: string) => void }) {
             exit={{ opacity: 0, scale: 0.8 }}
             className="flex gap-1 bg-black/70 border border-white/10 rounded-full px-1.5 py-1"
           >
-            {QUICK_EMOTES.map((e) => (
-              <button
-                key={e}
-                onClick={() => {
-                  onSend(e);
-                  setOpen(false);
-                }}
-                className="text-lg hover:scale-125 transition-transform"
-              >
-                {e}
-              </button>
-            ))}
+            {QUICK_EMOTES.map((key) => {
+              const Icon = EMOTE_ICONS[key];
+              return (
+                <button
+                  key={key}
+                  onClick={() => {
+                    onSend(key);
+                    setOpen(false);
+                  }}
+                  className="p-1 text-amber-200/80 hover:text-amber-300 hover:scale-125 transition-transform"
+                >
+                  <Icon size={16} />
+                </button>
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-6 h-6 rounded-full bg-black/50 border border-white/10 text-xs text-white/50 hover:text-white"
+        className="w-6 h-6 rounded-full bg-black/50 border border-white/10 text-white/50 hover:text-white flex items-center justify-center"
         title="Enviar reação"
       >
-        😀
+        <IconSmile size={14} />
       </button>
     </div>
   );
