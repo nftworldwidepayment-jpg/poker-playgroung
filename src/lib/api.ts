@@ -79,6 +79,11 @@ export const api = {
     call("toggle_pause", { code, playerId, token, paused }) as Promise<{ ok: boolean }>,
   kickPlayer: (playerId: string, token: string, targetId: string) =>
     call("kick_player", { playerId, token, targetId }) as Promise<{ ok: boolean }>,
+  addBot: (playerId: string, token: string, difficulty: string) =>
+    call("add_bot", { playerId, token, difficulty }) as Promise<{ ok: boolean; playerId: string }>,
+  setBotDifficulty: (playerId: string, token: string, targetId: string, difficulty: string) =>
+    call("set_bot_difficulty", { playerId, token, targetId, difficulty }) as Promise<{ ok: boolean }>,
+  botTick: (code: string) => call("bot_tick", { code }) as Promise<{ ok: boolean }>,
 };
 
 const STORAGE_KEY = "poker-session";

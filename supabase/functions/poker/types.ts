@@ -72,6 +72,8 @@ export interface PlayerRow {
   last_action_at: string | null;
   left_at: string | null;
   consecutive_timeouts: number;
+  is_bot: boolean;
+  bot_difficulty: "easy" | "medium" | "hard" | null;
 }
 
 export type PlayerAction = "fold" | "check" | "call" | "raise" | "all_in";

@@ -16,14 +16,15 @@ cd "$(dirname "$0")/.."
 SRC_DIR="src/lib"
 DST_DIR="supabase/functions/poker"
 
-for f in engine.ts cards.ts types.ts; do
+for f in engine.ts cards.ts types.ts bot.ts; do
   cp "$SRC_DIR/$f" "$DST_DIR/$f"
   sed -i \
     -e 's#from "\./types"#from "./types.ts"#' \
     -e 's#from "\./cards"#from "./cards.ts"#' \
+    -e 's#from "\./engine"#from "./engine.ts"#' \
     "$DST_DIR/$f"
 done
 
-echo "Synced engine.ts, cards.ts, types.ts into $DST_DIR"
+echo "Synced engine.ts, cards.ts, types.ts, bot.ts into $DST_DIR"
 echo "Review with: git diff $DST_DIR"
-echo "Then redeploy the edge function (all 5 files: index.ts, db.ts, engine.ts, cards.ts, types.ts)."
+echo "Then redeploy the edge function (all 6 files: index.ts, db.ts, engine.ts, cards.ts, types.ts, bot.ts)."

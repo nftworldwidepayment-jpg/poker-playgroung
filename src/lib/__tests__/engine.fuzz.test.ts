@@ -7,6 +7,7 @@
 // PLO4 all-in cap leaving an over-cap player "active" who then folds, orphaning a side-pot
 // layer) was originally found and fixed — keep this passing before touching engine.ts.
 import { startHand, applyAction, canStartHand } from "../engine";
+import { decideBotAction, BotDifficulty } from "../bot";
 import { RoomRow, PlayerRow, Card } from "../types";
 
 function mkRoom(o: Partial<RoomRow> = {}): RoomRow {
@@ -27,7 +28,8 @@ function mkPlayer(seat: number, chips: number, o: Partial<PlayerRow> = {}): Play
     id: `p${seat}`, room_id: "r1", seat, name: `P${seat}`, chips, current_bet: 0,
     total_bet_hand: 0, status: "active", is_host: seat === 0, has_acted: false,
     is_connected: true, created_at: "", auto_straddle: false, wants_sit_out: false,
-    avatar_key: null, last_action_at: null, left_at: null, consecutive_timeouts: 0, ...o,
+    avatar_key: null, last_action_at: null, left_at: null, consecutive_timeouts: 0,
+    is_bot: false, bot_difficulty: null, ...o,
   };
 }
 function totalChips(players: PlayerRow[]): number {
@@ -153,6 +155,74 @@ function runFuzz(numPlayers: number, gameType: "nlhe" | "plo4", runItTwice: bool
   return true;
 }
 
+// Same chip-conservation invariant, but every seat is a bot making real
+// decideBotAction() decisions instead of uniform-random ones — this is what
+// actually exercises the bot's equity/pot-odds/sizing logic instead of just
+// type-checking it, including the illegal-action fallback path in bot_tick.
+function runBotFuzz(numPlayers: number, gameType: "nlhe" | "plo4", difficulties: BotDifficulty[], hands: number, seedTag: string) {
+  const players: PlayerRow[] = [];
+  for (let i = 0; i < numPlayers; i++) {
+    players.push(mkPlayer(i, 4000, { is_bot: true, bot_difficulty: difficulties[i % difficulties.length] }));
+  }
+  const room = mkRoom({ game_type: gameType, small_blind: 10, big_blind: 20 });
+  const ctx = { room, players, holeCards: {} as Record<string, Card[]> };
+
+  const before = totalChips(players);
+  let handCount = 0;
+
+  while (handCount < hands) {
+    const alive = players.filter((p) => p.chips > 0);
+    if (!canStartHand(alive)) break;
+    try {
+      startHand(ctx);
+    } catch (e) {
+      console.log(`[${seedTag}] startHand threw:`, (e as Error).message);
+      break;
+    }
+    handCount++;
+
+    let guard = 0;
+    while (room.phase !== "showdown" && guard < 60) {
+      guard++;
+      const seat = room.current_turn_seat;
+      if (seat == null) break;
+      const p = players.find((pl) => pl.seat === seat);
+      if (!p) break;
+
+      const beforeAction = totalWithPot(players, room);
+      const decision = decideBotAction(room, players, p, ctx.holeCards[p.id] || []);
+      try {
+        applyAction(ctx, p.id, decision.action, decision.amount);
+      } catch {
+        try {
+          applyAction(ctx, p.id, p.current_bet === room.current_bet ? "check" : "call");
+        } catch (e2) {
+          console.log(`[${seedTag}] !!! bot fallback ALSO threw (real bug?):`, (e2 as Error).message);
+          return false;
+        }
+      }
+      const afterAction = totalWithPot(players, room);
+      if (beforeAction !== afterAction) {
+        console.log(`[${seedTag}] !!! CHIP+POT MISMATCH mid-action at hand ${handCount}: before=${beforeAction} after=${afterAction}`);
+        return false;
+      }
+    }
+
+    if (guard >= 60 && room.phase !== "showdown") {
+      console.log(`[${seedTag}] !!! STUCK LOOP at hand ${handCount}, guard hit 60 without reaching showdown`);
+      return false;
+    }
+
+    const after = totalChips(players);
+    if (after !== before) {
+      console.log(`[${seedTag}] !!! TOTAL CHIP DRIFT after hand ${handCount}: before=${before} after=${after}`);
+      return false;
+    }
+  }
+  console.log(`[${seedTag}] OK — ${handCount} hands, total chips conserved at ${totalChips(players)}`);
+  return true;
+}
+
 let allOk = true;
 allOk = runFuzz(3, "nlhe", false, false, 500, "nlhe-3p") && allOk;
 allOk = runFuzz(4, "nlhe", false, true, 500, "nlhe-4p-straddle") && allOk;
@@ -162,6 +232,10 @@ allOk = runFuzz(5, "plo4", true, true, 400, "plo4-5p-RIT-straddle") && allOk;
 allOk = runFuzz(2, "nlhe", false, false, 500, "nlhe-heads-up") && allOk;
 allOk = runFuzz(5, "nlhe", false, true, 500, "nlhe-5p-ante", 5) && allOk;
 allOk = runFuzz(4, "plo4", true, true, 400, "plo4-4p-ante-RIT-straddle", 3) && allOk;
+allOk = runBotFuzz(4, "nlhe", ["easy", "medium", "hard"], 100, "bots-nlhe-4p-mixed") && allOk;
+allOk = runBotFuzz(6, "nlhe", ["hard"], 60, "bots-nlhe-6p-hard") && allOk;
+allOk = runBotFuzz(3, "plo4", ["easy", "medium", "hard"], 60, "bots-plo4-3p-mixed") && allOk;
+allOk = runBotFuzz(2, "nlhe", ["hard"], 60, "bots-nlhe-heads-up-hard") && allOk;
 
 console.log(allOk ? "\nALL FUZZ RUNS PASSED" : "\nSOME FUZZ RUNS FAILED");
 if (!allOk) process.exit(1);

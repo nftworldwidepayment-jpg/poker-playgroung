@@ -88,6 +88,21 @@ export default function RoomPage() {
     return () => clearInterval(t);
   }, [code, room?.turn_expires_at]);
 
+  // when it's a bot's turn, let it "think" for a beat (same thinking-dots
+  // animation a human would trigger) then have any connected client ask the
+  // server to compute and apply its move — the decision itself runs entirely
+  // server-side in bot_tick, this is just the trigger.
+  useEffect(() => {
+    if (!room || room.status !== "playing") return;
+    const actor = players.find((p) => p.seat === room.current_turn_seat);
+    if (!actor?.is_bot) return;
+    const delay = 700 + Math.random() * 900;
+    const t = setTimeout(() => {
+      api.botTick(code).catch(() => {});
+    }, delay);
+    return () => clearTimeout(t);
+  }, [code, room?.current_turn_seat, room?.status, players]);
+
   const you = useMemo(() => players.find((p) => p.id === session?.playerId) || null, [players, session]);
   const isHost = !!you?.is_host;
 
@@ -295,6 +310,24 @@ export default function RoomPage() {
 
   function handleSendEmote(playerId: string, emoji: string) {
     sendEmote(playerId, emoji);
+  }
+
+  async function handleAddBot(difficulty: string) {
+    if (!session) return;
+    try {
+      await api.addBot(session.playerId, session.token, difficulty);
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : "Erro ao adicionar bot");
+    }
+  }
+
+  async function handleSetBotDifficulty(targetId: string, difficulty: string) {
+    if (!session) return;
+    try {
+      await api.setBotDifficulty(session.playerId, session.token, targetId, difficulty);
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : "Erro ao mudar a dificuldade");
+    }
   }
 
   async function handleAction(action: string, amount?: number) {
@@ -595,6 +628,42 @@ export default function RoomPage() {
                 </label>
               )}
             </div>
+
+            {isHost && players.length < room.max_players && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-white/40">Adicionar bot:</span>
+                {(["easy", "medium", "hard"] as const).map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => handleAddBot(d)}
+                    className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 hover:border-amber-400/40 text-white/70 hover:text-amber-200 transition"
+                  >
+                    {d === "easy" ? "Fácil" : d === "medium" ? "Médio" : "Difícil"}
+                  </button>
+                ))}
+              </div>
+            )}
+            {isHost && players.some((p) => p.is_bot) && (
+              <div className="flex flex-col items-center gap-1 text-xs">
+                {players
+                  .filter((p) => p.is_bot)
+                  .map((p) => (
+                    <div key={p.id} className="flex items-center gap-2 text-white/50">
+                      <span>{p.name}</span>
+                      <select
+                        value={p.bot_difficulty || "medium"}
+                        onChange={(e) => handleSetBotDifficulty(p.id, e.target.value)}
+                        className="bg-black/30 border border-white/10 rounded px-1.5 py-0.5 text-white/70"
+                      >
+                        <option value="easy">Fácil</option>
+                        <option value="medium">Médio</option>
+                        <option value="hard">Difícil</option>
+                      </select>
+                    </div>
+                  ))}
+              </div>
+            )}
+
             {isHost ? (
               <button
                 disabled={busy || players.length < 2}

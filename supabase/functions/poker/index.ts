@@ -1,5 +1,6 @@
 import { admin, checkRoomPassword, genCode, genToken, loadCtx, saveCtx, setRoomPassword, verifyPlayer } from "./db.ts";
 import { applyAction, applyTimeout, canStartHand, showHand, startHand } from "./engine.ts";
+import { decideBotAction } from "./bot.ts";
 
 // Only this app's own origins are allowed to make browser CORS requests — an arbitrary
 // third-party site embedding this endpoint could otherwise ride a visitor's browser to
@@ -142,6 +143,104 @@ Deno.serve(async (req) => {
         const token = genToken();
         await db.from("player_secrets").insert({ player_id: player.id, token });
         return json({ code: room.code, playerId: player.id, token });
+      }
+
+      case "add_bot": {
+        const { playerId, token, difficulty } = body as {
+          playerId: string;
+          token: string;
+          difficulty?: string;
+        };
+        const botDifficulty = ["easy", "medium", "hard"].includes(String(difficulty)) ? String(difficulty) : "medium";
+        const db = admin();
+        const { data: requester } = await db.from("players").select("room_id, is_host").eq("id", playerId).single();
+        if (!requester) return json({ error: "Jogador não encontrado" }, 404);
+        const ok = await verifyPlayer(requester.room_id, playerId, token);
+        if (!ok) return json({ error: "Não autorizado" }, 401);
+        if (!requester.is_host) return json({ error: "Só o anfitrião pode adicionar bots" }, 403);
+
+        const { data: room } = await db.from("rooms").select("*").eq("id", requester.room_id).single();
+        if (!room) return json({ error: "Sala não encontrada" }, 404);
+        if (room.status !== "waiting") return json({ error: "Só podes adicionar bots antes de começar" }, 400);
+
+        const { data: players } = await db.from("players").select("*").eq("room_id", room.id).neq("status", "left");
+        if ((players || []).length >= room.max_players) return json({ error: "Sala cheia" }, 400);
+
+        const usedSeats = new Set((players || []).map((p) => p.seat));
+        let seat = 0;
+        while (usedSeats.has(seat)) seat++;
+
+        const botCount = (players || []).filter((p) => p.is_bot).length;
+        const label = { easy: "Fácil", medium: "Médio", hard: "Difícil" }[botDifficulty as "easy" | "medium" | "hard"];
+        const name = `Bot ${label} ${botCount + 1}`;
+
+        const { data: bot, error } = await db
+          .from("players")
+          .insert({
+            room_id: room.id,
+            seat,
+            name,
+            chips: 1000,
+            is_host: false,
+            avatar_key: randomAvatarKey(),
+            is_bot: true,
+            bot_difficulty: botDifficulty,
+          })
+          .select()
+          .single();
+        if (error || !bot) return json({ error: "Falha ao adicionar bot" }, 500);
+        return json({ ok: true, playerId: bot.id });
+      }
+
+      case "set_bot_difficulty": {
+        const { playerId, token, targetId, difficulty } = body as {
+          playerId: string;
+          token: string;
+          targetId: string;
+          difficulty: string;
+        };
+        if (!["easy", "medium", "hard"].includes(difficulty)) return json({ error: "Dificuldade inválida" }, 400);
+        const db = admin();
+        const { data: requester } = await db.from("players").select("room_id, is_host").eq("id", playerId).single();
+        if (!requester) return json({ error: "Jogador não encontrado" }, 404);
+        const ok = await verifyPlayer(requester.room_id, playerId, token);
+        if (!ok) return json({ error: "Não autorizado" }, 401);
+        if (!requester.is_host) return json({ error: "Só o anfitrião pode alterar a dificuldade" }, 403);
+        const { data: target } = await db.from("players").select("room_id, is_bot").eq("id", targetId).single();
+        if (!target || target.room_id !== requester.room_id || !target.is_bot) {
+          return json({ error: "Bot não encontrado" }, 404);
+        }
+        await db.from("players").update({ bot_difficulty: difficulty }).eq("id", targetId);
+        return json({ ok: true });
+      }
+
+      case "bot_tick": {
+        // Public op (no auth) — same trust model as "timeout": any connected client
+        // may trigger it, but it only ever does something if the seat to act really
+        // is a bot's, and the decision itself runs entirely server-side, so a client
+        // triggering this early/often can't gain any information or edge.
+        const code = String(body.code || "").trim().toUpperCase();
+        const ctx = await loadCtx(code);
+        if (!ctx) return json({ error: "Sala não encontrada" }, 404);
+        if (ctx.room.status !== "playing") return json({ ok: false });
+        const bot = ctx.players.find((p) => p.seat === ctx.room.current_turn_seat);
+        if (!bot || !bot.is_bot || bot.status !== "active") return json({ ok: false });
+
+        const decision = decideBotAction(ctx.room, ctx.players, bot, ctx.holeCards[bot.id] || []);
+        try {
+          applyAction(ctx, bot.id, decision.action, decision.amount);
+        } catch {
+          // The chosen action turned out to be illegal (e.g. a PLO4 pot-cap edge
+          // case clamped the raise below a legal size) — fall back to the always-
+          // legal default instead of leaving the bot stuck on its turn forever.
+          try {
+            applyAction(ctx, bot.id, bot.current_bet === ctx.room.current_bet ? "check" : "call");
+          } catch {
+            return json({ ok: false });
+          }
+        }
+        await saveCtx(ctx);
+        return json({ ok: true });
       }
 
       case "start": {

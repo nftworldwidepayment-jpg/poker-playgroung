@@ -222,6 +222,7 @@ export function Seat({
       >
         <div className={`text-xs font-serif font-semibold ${isYou ? "text-cyan-300" : "text-amber-50/90"} max-w-[100px] truncate flex items-center justify-center gap-1`}>
           {noteDotColor && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${noteDotColor}`} />}
+          {player.is_bot && <span title={`Bot — ${player.bot_difficulty || "medium"}`}>🤖</span>}
           {player.name} {isYou && "(tu)"}
         </div>
         <div className="text-[11px] text-amber-300 font-mono tabular-nums">
