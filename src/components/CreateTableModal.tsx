@@ -135,12 +135,23 @@ function FieldError({ msg }: { msg?: string }) {
 
 // custom gold switch — used for every boolean toggle in this panel so they all
 // share the same 180ms feel instead of raw browser checkboxes
-function Switch({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+function Switch({
+  checked,
+  onChange,
+  disabled,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  label?: string;
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       disabled={disabled}
       onClick={() => {
         if (disabled) return;
@@ -367,6 +378,7 @@ export function CreateTableModal({
                         onBlur={() => setTouched((t) => ({ ...t, name: true }))}
                         maxLength={20}
                         placeholder="Ex: João"
+                        aria-label="O teu nome"
                         aria-invalid={!!nameError}
                         className={`w-full bg-black/30 border rounded-xl px-3.5 py-2.5 outline-none transition placeholder:text-white/20 ${
                           nameError ? "border-[var(--danger)]/60" : "border-white/10 focus:border-[var(--gold)]/60 focus:shadow-[0_0_0_3px_rgba(201,169,97,0.12)]"
@@ -391,6 +403,7 @@ export function CreateTableModal({
                           value={prefs.tableName}
                           onChange={(e) => patch({ tableName: e.target.value.slice(0, 30) })}
                           placeholder="Ex: Mesa dos Amigos"
+                          aria-label="Nome da mesa"
                           className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 pr-11 outline-none focus:border-[var(--gold)]/60 focus:shadow-[0_0_0_3px_rgba(201,169,97,0.12)] transition placeholder:text-white/20"
                         />
                         <button
@@ -412,7 +425,7 @@ export function CreateTableModal({
                         <div className="text-sm text-white/80 font-semibold">Mesa privada</div>
                         <div className="text-[11px] text-white/35">Exige palavra-passe além do código</div>
                       </div>
-                      <Switch checked={prefs.isPrivate} onChange={(v) => patch({ isPrivate: v })} />
+                      <Switch checked={prefs.isPrivate} onChange={(v) => patch({ isPrivate: v })} label="Mesa privada" />
                     </div>
                     <AnimatePresence>
                       {prefs.isPrivate && (
@@ -429,6 +442,7 @@ export function CreateTableModal({
                             onChange={(e) => setPassword(e.target.value)}
                             onBlur={() => setTouched((t) => ({ ...t, password: true }))}
                             placeholder="Palavra-passe (mín. 4 caracteres)"
+                            aria-label="Palavra-passe da mesa"
                             className={`w-full bg-black/30 border rounded-xl px-3.5 py-2.5 outline-none transition ${
                               passwordError ? "border-[var(--danger)]/60" : "border-white/10 focus:border-[var(--gold)]/60"
                             }`}
@@ -540,6 +554,7 @@ export function CreateTableModal({
                             inputMode="numeric"
                             min={1}
                             value={prefs.smallBlind}
+                            aria-label="Small blind"
                             onChange={(e) => {
                               const sb = Math.max(1, Number(e.target.value) || 1);
                               patch({ smallBlind: sb, bigBlind: Math.max(prefs.bigBlind, sb * 2 === prefs.bigBlind ? sb * 2 : prefs.bigBlind) });
@@ -555,6 +570,7 @@ export function CreateTableModal({
                             inputMode="numeric"
                             min={2}
                             value={prefs.bigBlind}
+                            aria-label="Big blind"
                             onChange={(e) => patch({ bigBlind: Math.max(1, Number(e.target.value) || 1) })}
                             onBlur={() => setTouched((t) => ({ ...t, blinds: true }))}
                             className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--gold)]/60 font-mono"
@@ -578,6 +594,7 @@ export function CreateTableModal({
                       max={prefs.bigBlind * 400}
                       step={prefs.bigBlind}
                       value={prefs.buyIn}
+                      aria-label="Fichas iniciais"
                       onChange={(e) => patch({ buyIn: Number(e.target.value) })}
                       onBlur={() => setTouched((t) => ({ ...t, buyIn: true }))}
                       className="w-full accent-[var(--gold)]"
@@ -666,6 +683,7 @@ export function CreateTableModal({
                           <Switch
                             checked={prefs.anteOn}
                             onChange={(v) => patch({ anteOn: v, ante: v && !prefs.ante ? Math.round(prefs.bigBlind / 5) : prefs.ante })}
+                            label="Ante"
                           />
                         </div>
                         <AnimatePresence>
@@ -678,6 +696,7 @@ export function CreateTableModal({
                               inputMode="numeric"
                               min={1}
                               value={prefs.ante}
+                              aria-label="Valor do ante"
                               onChange={(e) => patch({ ante: Math.max(1, Number(e.target.value) || 1) })}
                               className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--gold)]/60 font-mono"
                             />
@@ -689,7 +708,7 @@ export function CreateTableModal({
                             <div className="text-sm text-white/80 font-semibold">Straddle</div>
                             <div className="text-[11px] text-white/35">Jogadores podem straddle voluntário</div>
                           </div>
-                          <Switch checked={prefs.allowStraddle} onChange={(v) => patch({ allowStraddle: v })} />
+                          <Switch checked={prefs.allowStraddle} onChange={(v) => patch({ allowStraddle: v })} label="Permitir straddle" />
                         </div>
 
                         <div className="flex items-center justify-between bg-black/20 border border-white/10 rounded-xl px-3.5 py-3">
@@ -697,7 +716,7 @@ export function CreateTableModal({
                             <div className="text-sm text-white/80 font-semibold">Run It Twice</div>
                             <div className="text-[11px] text-white/35">Divide o pote em duas mesas em all-in</div>
                           </div>
-                          <Switch checked={prefs.runItTwice} onChange={(v) => patch({ runItTwice: v })} />
+                          <Switch checked={prefs.runItTwice} onChange={(v) => patch({ runItTwice: v })} label="Run It Twice" />
                         </div>
                       </motion.div>
                     )}

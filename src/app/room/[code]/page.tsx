@@ -35,6 +35,7 @@ import {
   IconCards,
   IconCheck,
   IconClipboard,
+  IconDownload,
   IconHelpCircle,
   IconHistory,
   IconPause,
@@ -476,6 +477,29 @@ export default function RoomPage() {
     });
   }
 
+  // pulls the FULL server-side history (up to 50 hands) rather than just the
+  // last 5 this tab happened to see live, and downloads it as JSON — the
+  // server has kept every hand since the room was created (see hand_history
+  // in db.ts), this just finally gives a way to get it out.
+  async function exportHandHistory() {
+    try {
+      const { hands } = await api.handHistory(code, 50);
+      if (!hands.length) {
+        pushToast("Ainda não há mãos para exportar", "info");
+        return;
+      }
+      const blob = new Blob([JSON.stringify(hands, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `poker-night-${code}-mãos.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : "Erro ao exportar histórico", "error");
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/50">
@@ -655,8 +679,18 @@ export default function RoomPage() {
                 exit={{ opacity: 0, y: -8, scale: 0.95 }}
                 className="absolute top-10 right-0 z-30 w-64 bg-slate-900/95 backdrop-blur border border-amber-400/20 rounded-xl p-3 shadow-2xl"
               >
-                <div className="text-[10px] uppercase tracking-widest text-amber-300/60 font-semibold mb-2">
-                  Últimas mãos
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] uppercase tracking-widest text-amber-300/60 font-semibold">
+                    Últimas mãos
+                  </span>
+                  <button
+                    onClick={exportHandHistory}
+                    className="text-white/40 hover:text-amber-200 transition"
+                    title="Exportar histórico completo (JSON)"
+                    aria-label="Exportar histórico completo"
+                  >
+                    <IconDownload size={13} />
+                  </button>
                 </div>
                 <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
                   {handHistory.map((h) => (

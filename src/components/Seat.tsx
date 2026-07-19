@@ -82,6 +82,7 @@ function SeatImpl({
   noteTitle,
   onNoteClick,
   emote,
+  emoteKey,
   isHost,
   onKick,
   onSendEmote,
@@ -106,6 +107,7 @@ function SeatImpl({
   noteTitle?: string | null;
   onNoteClick?: () => void;
   emote?: string | null;
+  emoteKey?: number;
   isHost?: boolean;
   onKick?: () => void;
   onSendEmote?: (emoji: string) => void;
@@ -154,7 +156,7 @@ function SeatImpl({
       <AnimatePresence>
         {emote && EMOTE_ICONS[emote] && (
           <motion.div
-            key={emote + Date.now()}
+            key={emoteKey ?? emote}
             initial={{ opacity: 0, y: 0, scale: 0.5 }}
             animate={{ opacity: 1, y: -50, scale: 1.4 }}
             exit={{ opacity: 0 }}

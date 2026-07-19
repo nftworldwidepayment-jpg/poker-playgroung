@@ -84,6 +84,17 @@ export const api = {
   setBotDifficulty: (playerId: string, token: string, targetId: string, difficulty: string) =>
     call("set_bot_difficulty", { playerId, token, targetId, difficulty }) as Promise<{ ok: boolean }>,
   botTick: (code: string) => call("bot_tick", { code }) as Promise<{ ok: boolean }>,
+  handHistory: (code: string, limit?: number) =>
+    call("hand_history", { code, limit }) as Promise<{
+      hands: {
+        hand_number: number;
+        game_type: string;
+        board: string[];
+        winners: { playerId: string; name: string; amount: number; hand?: string }[];
+        revealed_hands: { playerId: string; cards: string[] }[] | null;
+        created_at: string;
+      }[];
+    }>,
 };
 
 const STORAGE_KEY = "poker-session";

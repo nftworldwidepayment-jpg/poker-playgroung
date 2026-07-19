@@ -17,6 +17,8 @@ function Toggle({
   return (
     <button
       onClick={() => onChange(!value)}
+      role="switch"
+      aria-checked={value}
       className="flex items-center justify-between gap-4 w-full py-3 text-left group"
     >
       <span>

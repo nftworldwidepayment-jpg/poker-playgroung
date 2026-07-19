@@ -301,6 +301,7 @@ export function PokerTable({
             noteTitle={noteTitles?.[p.id]}
             onNoteClick={onNoteClick ? () => onNoteClick(p.id) : undefined}
             emote={activeEmote?.emoji}
+            emoteKey={activeEmote?.id}
             onSendEmote={onSendEmote ? (emoji) => onSendEmote(p.id, emoji) : undefined}
             isHost={isHost}
             onKick={onKick ? () => onKick(p.id) : undefined}
