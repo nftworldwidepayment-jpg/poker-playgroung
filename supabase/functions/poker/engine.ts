@@ -195,16 +195,30 @@ function computeSidePots(players: PlayerRow[]): {
     const contributors = contribs.filter((c) => c.amt >= level);
     const perPlayer = level - prev;
     const layer = perPlayer * contributors.length;
+    if (layer <= 0) {
+      prev = level;
+      continue;
+    }
+    if (contributors.length === 1) {
+      // Nobody else — folded or not — ever put money in at this level, so this
+      // layer was never "won" from anyone: it's this player's own uncalled
+      // excess coming back (the standard "returns uncalled bet" case). Refund
+      // it silently instead of running it through distributeAmongWinners,
+      // which would otherwise report it as a showdown win — misleading in a
+      // heads-up all-in where the short stack's hand actually lost the real
+      // (matched) pot and this excess is just the deep stack's own money.
+      refunds[contributors[0].id] = (refunds[contributors[0].id] ?? 0) + layer;
+      prev = level;
+      continue;
+    }
     const eligible = contributors.filter((c) => !c.folded).map((c) => c.id);
-    if (layer > 0) {
-      if (eligible.length > 0) {
-        pots.push({ amount: layer, eligible });
-      } else {
-        // Every contributor at this level has folded (possible when a PLO4 pot-limit
-        // cap leaves someone "active" with excess chips wagered, who then folds before
-        // anyone else matches their contribution) — refund it instead of vanishing it.
-        for (const c of contributors) refunds[c.id] = (refunds[c.id] ?? 0) + perPlayer;
-      }
+    if (eligible.length > 0) {
+      pots.push({ amount: layer, eligible });
+    } else {
+      // Every contributor at this level has folded (possible when a PLO4 pot-limit
+      // cap leaves someone "active" with excess chips wagered, who then folds before
+      // anyone else matches their contribution) — refund it instead of vanishing it.
+      for (const c of contributors) refunds[c.id] = (refunds[c.id] ?? 0) + perPlayer;
     }
     prev = level;
   }

@@ -50,6 +50,7 @@ export default function RoomPage() {
   const [copied, setCopied] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [showWinner, setShowWinner] = useState(false);
+  const [revealing, setRevealing] = useState(false);
   const [handHistory, setHandHistory] = useState<
     { handNumber: number; board: string[]; winners: { name: string; amount: number; hand?: string }[] }[]
   >([]);
@@ -151,19 +152,28 @@ export default function RoomPage() {
   }, [room?.phase, room?.community_cards.length]);
 
   // showdown reveal: wait for the board to finish flipping (matching
-  // PokerTable's staggered reveal pace) before popping the winner overlay
+  // PokerTable's staggered reveal pace), then hold a deliberate "slow roll"
+  // beat — the same suspense a real player gets by not tabling their winning
+  // hand right away — before the winner overlay lands.
   useEffect(() => {
     if (room?.phase === "showdown" && (room.winners?.length || 0) > 0) {
       const cardsStillFlipping = Math.max(0, room.community_cards.length - lastBoardLenBeforeShowdown.current);
-      const delay = 500 + cardsStillFlipping * 650 + 400;
-      const t = setTimeout(() => {
+      const boardDelay = 500 + cardsStillFlipping * 650 + 300;
+      const slowRollMs = settings.reducedMotion ? 0 : 950;
+      const t1 = setTimeout(() => setRevealing(!settings.reducedMotion), boardDelay);
+      const t2 = setTimeout(() => {
+        setRevealing(false);
         setShowWinner(true);
         playWin();
-      }, delay);
-      return () => clearTimeout(t);
+      }, boardDelay + slowRollMs);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
     setShowWinner(false);
-  }, [room?.phase, room?.winners, room?.hand_number]);
+    setRevealing(false);
+  }, [room?.phase, room?.winners, room?.hand_number, settings.reducedMotion]);
 
   // keep a small client-side log of recent finished hands for the history popover
   useEffect(() => {
@@ -710,6 +720,35 @@ export default function RoomPage() {
           </div>
         );
       })()}
+
+      <AnimatePresence>
+        {room.phase === "showdown" && revealing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 8 }}
+              animate={{ scale: 1, y: 0 }}
+              className="flex items-center gap-2.5 bg-black/70 border border-amber-400/25 rounded-full px-5 py-2.5 backdrop-blur"
+            >
+              <span className="text-amber-200/90 text-sm font-serif italic tracking-wide">A revelar</span>
+              <span className="flex gap-1">
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-amber-300"
+                    animate={{ opacity: [0.25, 1, 0.25] }}
+                    transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+                  />
+                ))}
+              </span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {room.phase === "showdown" && showWinner && (
         <WinnerOverlay

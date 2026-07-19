@@ -44,20 +44,24 @@ export function WinnerOverlay({
         transition={{ type: "spring", stiffness: 200, damping: 16 }}
         className="pointer-events-auto bg-gradient-to-br from-slate-900/95 to-slate-800/95 border border-amber-400/40 rounded-2xl px-8 py-6 shadow-2xl text-center max-w-sm mx-4"
       >
-        <div className="text-amber-300 text-xs uppercase tracking-widest font-semibold mb-2">Mão terminada</div>
-        {winners.map((w) => {
-          const equity = room.all_in_equity?.find((e) => e.playerId === w.playerId)?.pct;
-          return (
-            <div key={w.playerId} className="mb-1">
-              <div className="text-2xl font-extrabold text-white">{w.name}</div>
-              <div className="text-amber-200 font-mono">
-                +{w.amount.toLocaleString("pt-PT")} fichas
-                {w.hand ? <span className="text-white/60 font-sans"> · {w.hand}</span> : null}
+        <div className="text-amber-300 text-xs uppercase tracking-widest font-semibold mb-3">
+          {winners.length > 1 ? "Pote dividido" : "Mão terminada"}
+        </div>
+        <div className="flex flex-col">
+          {winners.map((w, i) => {
+            const equity = room.all_in_equity?.find((e) => e.playerId === w.playerId)?.pct;
+            return (
+              <div key={w.playerId} className={i > 0 ? "mt-3 pt-3 border-t border-white/10" : ""}>
+                <div className="text-2xl font-extrabold text-white leading-tight">{w.name}</div>
+                <div className="text-amber-200 font-mono text-lg">+{w.amount.toLocaleString("pt-PT")}</div>
+                {w.hand && <div className="text-white/50 text-sm">{w.hand}</div>}
+                {equity != null && (
+                  <div className="text-[11px] text-white/35 font-mono mt-0.5">equity pré-runout: {equity}%</div>
+                )}
               </div>
-              {equity != null && <div className="text-[11px] text-white/40 font-mono">equity: {equity}%</div>}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
 
         {room.run_it_twice_boards && room.run_it_twice_boards.length === 2 && (
           <div className="flex justify-center gap-4 mt-3 mb-1">

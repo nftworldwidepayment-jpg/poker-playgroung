@@ -223,7 +223,61 @@ function runBotFuzz(numPlayers: number, gameType: "nlhe" | "plo4", difficulties:
   return true;
 }
 
+// Deterministic regression test for a real bug report: heads-up, wildly uneven
+// stacks, both all-in preflop. The deep stack's excess over what the short
+// stack could ever match is an "uncalled bet" — it was never contested by
+// anyone, so it must come back silently, not appear in room.winners as if the
+// deep stack won a showdown. (It previously did, because computeSidePots ran
+// every non-empty layer through the normal winner-determination path even
+// when only one player had contributed to it at all.)
+function testUncalledBetIsNotAWin(): boolean {
+  const shortP = mkPlayer(0, 100);
+  const deepP = mkPlayer(1, 5000);
+  const room = mkRoom({ small_blind: 10, big_blind: 20, dealer_seat: 0 });
+  const players = [shortP, deepP];
+  const ctx = { room, players, holeCards: {} as Record<string, Card[]> };
+
+  const beforeTotal = totalChips(players);
+  startHand(ctx);
+
+  // Force a known outcome: short stack holds pocket aces, deep stack holds
+  // the worst possible hand for this board, so there's no ambiguity about
+  // who actually won the contested (matched) pot.
+  ctx.holeCards[shortP.id] = ["Ah", "Ad"] as Card[];
+  ctx.holeCards[deepP.id] = ["2c", "3d"] as Card[];
+  // last 5 entries are popped first, in this order: 7h, 2s, 9d, Kc, 4h
+  room.deck = ["3h", "5c", "6d", "4h", "Kc", "9d", "2s", "7h"] as Card[];
+
+  const firstSeat = room.current_turn_seat!;
+  const firstPlayer = players.find((p) => p.seat === firstSeat)!;
+  const secondPlayer = firstPlayer === shortP ? deepP : shortP;
+  applyAction(ctx, firstPlayer.id, "all_in");
+  applyAction(ctx, secondPlayer.id, "all_in");
+
+  const afterTotal = totalChips(players);
+  if (beforeTotal !== afterTotal) {
+    console.log(`[uncalled-bet] !!! chip drift: before=${beforeTotal} after=${afterTotal}`);
+    return false;
+  }
+  const winners = room.winners || [];
+  if (winners.some((w) => w.playerId === deepP.id)) {
+    console.log("[uncalled-bet] !!! deep stack shown as a winner for its own uncalled excess:", winners);
+    return false;
+  }
+  if (!winners.some((w) => w.playerId === shortP.id)) {
+    console.log("[uncalled-bet] !!! short stack (the actual best hand) is missing from winners:", winners);
+    return false;
+  }
+  if (deepP.chips <= 0) {
+    console.log(`[uncalled-bet] !!! deep stack's uncalled excess was never refunded (chips=${deepP.chips})`);
+    return false;
+  }
+  console.log(`[uncalled-bet] OK — short stack is the sole winner, deep stack silently kept its uncalled ${deepP.chips}`);
+  return true;
+}
+
 let allOk = true;
+allOk = testUncalledBetIsNotAWin() && allOk;
 allOk = runFuzz(3, "nlhe", false, false, 500, "nlhe-3p") && allOk;
 allOk = runFuzz(4, "nlhe", false, true, 500, "nlhe-4p-straddle") && allOk;
 allOk = runFuzz(3, "plo4", false, false, 500, "plo4-3p") && allOk;
