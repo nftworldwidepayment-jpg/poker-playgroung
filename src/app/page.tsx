@@ -101,7 +101,7 @@ export default function Home() {
   const [canQuickCreate, setCanQuickCreate] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [allSessions, setAllSessions] = useState<Session[]>([]);
-  const [mode, setMode] = useState<"friends" | "bot">("friends");
+  const [mode, setMode] = useState<"friends" | "bot" | "blackjack">("friends");
   const [botBusy, setBotBusy] = useState<string | null>(null);
   const [botError, setBotError] = useState("");
   const [botName, setBotName] = useState("");
@@ -319,6 +319,21 @@ export default function Home() {
               )}
               <span className="relative">🤖 Contra Bot</span>
             </button>
+            <button
+              onClick={() => setMode("blackjack")}
+              className={`relative flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+                mode === "blackjack" ? "text-slate-900" : "text-white/50 hover:text-white/80"
+              }`}
+            >
+              {mode === "blackjack" && (
+                <motion.span
+                  layoutId="home-tab-bg"
+                  transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500"
+                />
+              )}
+              <span className="relative">🂡 Blackjack</span>
+            </button>
           </div>
 
           <AnimatePresence mode="wait">
@@ -373,7 +388,7 @@ export default function Home() {
                   <span className="flex items-center gap-1">📱 Qualquer dispositivo</span>
                 </div>
               </motion.div>
-            ) : (
+            ) : mode === "bot" ? (
               <motion.div
                 key="bot"
                 initial={{ opacity: 0, x: 8 }}
@@ -423,6 +438,34 @@ export default function Home() {
                   ))}
                 </div>
                 {botError && <div className="text-[var(--danger)] text-xs text-center">{botError}</div>}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="blackjack"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.18 }}
+                className="flex flex-col gap-4 p-5 sm:p-6 pt-3"
+              >
+                <p className="text-center text-white/40 text-xs -mt-1">
+                  Rápido, sozinho, sem espera — sapata de {8} baralhos, até {5} mãos ao mesmo tempo.
+                </p>
+                <div className="flex items-center justify-center gap-4 text-[11px] text-white/45">
+                  <span className="flex items-center gap-1">🃏 8 baralhos</span>
+                  <span className="w-1 h-1 rounded-full bg-white/15" />
+                  <span className="flex items-center gap-1">✂️ Dividir até 5 mãos</span>
+                  <span className="w-1 h-1 rounded-full bg-white/15" />
+                  <span className="flex items-center gap-1">💰 Paga 3:2</span>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => router.push("/blackjack")}
+                  className="group relative w-full py-4 rounded-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 text-emerald-950 font-bold shadow-[0_10px_30px_-8px_rgba(16,185,129,0.5)] overflow-hidden"
+                >
+                  <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                  <span className="relative text-base">🂡 Jogar Blackjack</span>
+                </motion.button>
               </motion.div>
             )}
           </AnimatePresence>

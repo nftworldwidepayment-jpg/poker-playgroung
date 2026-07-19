@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:engine": "tsx src/lib/__tests__/engine.fuzz.test.ts",
+    "test:blackjack": "tsx src/lib/__tests__/blackjack.fuzz.test.ts",
     "sync:engine": "bash scripts/sync-engine.sh"
   },
   "dependencies": {
