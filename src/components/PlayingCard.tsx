@@ -63,7 +63,7 @@ const SIZES = {
   sm: "w-10 sm:w-14",
   md: "w-14 sm:w-20",
   lg: "w-16 sm:w-28",
-  xl: "w-24 sm:w-32",
+  xl: "w-20 sm:w-32",
 } as const;
 
 export function PlayingCard({

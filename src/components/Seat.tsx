@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PlayerRow } from "@/lib/types";
 import { PlayingCard } from "./PlayingCard";
@@ -20,14 +20,57 @@ const AVATAR_COLORS = [
   "from-pink-400 to-fuchsia-600",
 ];
 
-export function Seat({
+// Only ever mounted for the one seat whose turn it currently is (see its call
+// site below), so this is the only place in the whole app with a live timer
+// interval at any moment — everything used to hang off a single 250ms tick in
+// the room page that re-rendered the entire table (every seat, every card)
+// four times a second for the whole hand. Isolating it here means a countdown
+// tick now only ever touches this one small SVG.
+function TurnRing({ turnExpiresAt, turnSeconds }: { turnExpiresAt: string | null; turnSeconds: number }) {
+  const [pct, setPct] = useState(1);
+  useEffect(() => {
+    if (!turnExpiresAt) {
+      setPct(1);
+      return;
+    }
+    const seconds = turnSeconds || 30;
+    function tick() {
+      const remaining = (new Date(turnExpiresAt!).getTime() - Date.now()) / (seconds * 1000);
+      setPct(Math.max(0, Math.min(1, remaining)));
+    }
+    tick();
+    const t = setInterval(tick, 200);
+    return () => clearInterval(t);
+  }, [turnExpiresAt, turnSeconds]);
+
+  return (
+    <svg className="absolute -inset-1" viewBox="0 0 100 100">
+      <circle
+        cx="50"
+        cy="50"
+        r="47"
+        fill="none"
+        stroke="rgba(250,204,21,0.9)"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeDasharray={2 * Math.PI * 47}
+        strokeDashoffset={2 * Math.PI * 47 * (1 - pct)}
+        transform="rotate(-90 50 50)"
+        style={{ transition: "stroke-dashoffset 0.2s linear" }}
+      />
+    </svg>
+  );
+}
+
+function SeatImpl({
   player,
   isYou,
   isTurn,
   isDealer,
   holeCards,
   showCards,
-  timerPct,
+  turnExpiresAt,
+  turnSeconds,
   style,
   position,
   isThinking,
@@ -49,7 +92,8 @@ export function Seat({
   isDealer: boolean;
   holeCards?: string[];
   showCards: boolean;
-  timerPct: number;
+  turnExpiresAt: string | null;
+  turnSeconds: number;
   style: React.CSSProperties;
   position?: string | null;
   isThinking?: boolean;
@@ -132,21 +176,9 @@ export function Seat({
         </div>
       )}
 
-      <motion.div
-        animate={
-          isTurn
-            ? {
-                boxShadow: [
-                  "0 0 0px rgba(250,204,21,0)",
-                  "0 0 26px rgba(250,204,21,0.85)",
-                  "0 0 0px rgba(250,204,21,0)",
-                ],
-              }
-            : { boxShadow: "0 0 0px rgba(250,204,21,0)" }
-        }
-        transition={{ duration: 1.8, repeat: isTurn ? Infinity : 0, ease: "easeInOut" }}
+      <div
         className={`relative w-16 h-16 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-lg border-2 ${
-          isTurn ? "border-amber-300" : isYou ? "border-cyan-300/80" : "border-white/20"
+          isTurn ? "border-amber-300 turn-glow" : isYou ? "border-cyan-300/80" : "border-white/20"
         } ${folded ? "opacity-40 grayscale" : ""} ${sittingOut ? "opacity-60 sitting-out-sepia" : ""} ${
           isWinner ? "win-glow" : ""
         } ${isYou && isTurn ? "thinking-breathe" : ""}`}
@@ -161,23 +193,7 @@ export function Seat({
         ) : (
           player.name.slice(0, 2).toUpperCase()
         )}
-        {isTurn && (
-          <svg className="absolute -inset-1" viewBox="0 0 100 100">
-            <circle
-              cx="50"
-              cy="50"
-              r="47"
-              fill="none"
-              stroke="rgba(250,204,21,0.9)"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 47}
-              strokeDashoffset={2 * Math.PI * 47 * (1 - timerPct)}
-              transform="rotate(-90 50 50)"
-              style={{ transition: "stroke-dashoffset 0.4s linear" }}
-            />
-          </svg>
-        )}
+        {isTurn && <TurnRing turnExpiresAt={turnExpiresAt} turnSeconds={turnSeconds} />}
         {allIn && (
           <span className="absolute -bottom-2 px-1.5 py-0.5 rounded-full bg-rose-600 text-[9px] font-bold shadow">
             ALL-IN
@@ -191,7 +207,7 @@ export function Seat({
             <span className="w-1 h-1 rounded-full bg-white/80" />
           </span>
         )}
-      </motion.div>
+      </div>
 
       <AnimatePresence>
         {isThinking && !isYou && (
@@ -277,6 +293,12 @@ export function Seat({
     </div>
   );
 }
+
+// Memoized: this seat's props stay referentially stable across the frequent
+// Realtime updates that only touch other seats/pot state, so most seats skip
+// re-rendering entirely on any given tick instead of the whole table redoing
+// work every time anything in the room changes.
+export const Seat = memo(SeatImpl);
 
 const QUICK_EMOTES = ["👍", "😮", "🔥", "😢"];
 

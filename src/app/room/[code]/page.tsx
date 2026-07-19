@@ -30,7 +30,6 @@ export default function RoomPage() {
   const [joinError, setJoinError] = useState("");
   const [holeCards, setHoleCards] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const [now, setNow] = useState(Date.now());
   const [settings, updateSettings] = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -73,11 +72,6 @@ export default function RoomPage() {
   useEffect(() => {
     setSoundEnabled(settings.sound);
   }, [settings.sound]);
-
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, []);
 
   // enforce timeouts client-side (any connected client can trigger the check)
   useEffect(() => {
@@ -356,10 +350,6 @@ export default function RoomPage() {
     });
   }
 
-  const timerPct = room?.turn_expires_at
-    ? Math.max(0, Math.min(1, (new Date(room.turn_expires_at).getTime() - now) / ((room.turn_seconds || 30) * 1000)))
-    : 0;
-
   if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/50">
@@ -579,7 +569,6 @@ export default function RoomPage() {
           players={players}
           youId={session.playerId}
           holeCards={room.status === "playing" ? holeCards : []}
-          timerPct={timerPct}
           connectedIds={connectedIds}
           noteDots={Object.fromEntries(
             Object.entries(notes)

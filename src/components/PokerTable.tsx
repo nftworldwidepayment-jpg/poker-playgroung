@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { PlayerRow, RoomRow } from "@/lib/types";
 import { Seat } from "./Seat";
@@ -63,7 +63,10 @@ const PHASE_LABEL: Record<string, string> = {
 function seatPosition(index: number, total: number): React.CSSProperties {
   const angle = (Math.PI * 2 * index) / total + Math.PI / 2;
   const rx = 40;
-  const ry = 40;
+  // taller than rx on purpose: each seat's own card/avatar/name column extends
+  // well above its anchor point, so it needs more clearance from the vertical
+  // center (community cards + pot) than it does from the left/right edges.
+  const ry = 46;
   const left = 50 + rx * Math.cos(angle);
   const top = 50 + ry * Math.sin(angle);
   return { left: `${left}%`, top: `${top}%` };
@@ -87,7 +90,6 @@ export function PokerTable({
   players,
   youId,
   holeCards,
-  timerPct,
   connectedIds,
   noteDots,
   noteTitles,
@@ -101,7 +103,6 @@ export function PokerTable({
   players: PlayerRow[];
   youId: string | null;
   holeCards: string[];
-  timerPct: number;
   connectedIds?: Set<string>;
   noteDots?: Record<string, string>;
   noteTitles?: Record<string, string>;
@@ -113,6 +114,14 @@ export function PokerTable({
 }) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const total = Math.max(ordered.length, 1);
+  // stable per-index style objects — seatPosition(i, total) is pure, but calling it
+  // inline in the render loop below would hand every Seat a brand-new object every
+  // render regardless of memoization, since object identity never matches by
+  // reference even when the numbers are the same.
+  const seatStyles = useMemo(
+    () => Array.from({ length: total }, (_, i) => seatPosition(i, total)),
+    [total]
+  );
   const visibleBoard = useStaggeredBoard(room);
   const youIdx = Math.max(0, ordered.findIndex((p) => p.id === youId));
   const [settings] = useSettings();
@@ -132,7 +141,7 @@ export function PokerTable({
   }, [allInKey]);
 
   return (
-    <div className="relative w-full aspect-[3/2] max-w-5xl mx-auto drop-shadow-[0_25px_60px_rgba(0,0,0,0.75)] felt-texture">
+    <div className="relative w-full aspect-[3/4] sm:aspect-[3/2] max-w-5xl mx-auto drop-shadow-[0_25px_60px_rgba(0,0,0,0.75)] felt-texture">
       {showAllInVignette && <div className="allin-vignette" />}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -257,8 +266,9 @@ export function PokerTable({
             isDealer={room.dealer_seat === p.seat}
             holeCards={isYou ? holeCards : revealed}
             showCards={isYou || !!revealed}
-            timerPct={timerPct}
-            style={seatPosition(rel, total)}
+            turnExpiresAt={room.turn_expires_at}
+            turnSeconds={room.turn_seconds}
+            style={seatStyles[rel]}
             position={positionLabel(p.seat, room.dealer_seat, total)}
             isThinking={isThinking}
             equityPct={room.all_in_equity?.find((e) => e.playerId === p.id)?.pct}

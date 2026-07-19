@@ -122,6 +122,27 @@ button:not(:disabled):active {
   filter: brightness(1.15);
 }
 
+/* pulso dourado de "é a tua vez" — via ::before com box-shadow ESTÁTICO e só a
+   opacidade a animar (compositor puro, sem repaint por frame). Antes disto era
+   uma animação de box-shadow via Framer Motion a correr indefinidamente em JS
+   enquanto durasse a vez de cada jogador — caro em qualquer telemóvel. */
+@keyframes turn-glow-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.turn-glow {
+  position: relative;
+}
+.turn-glow::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  box-shadow: 0 0 22px 5px rgba(250, 204, 21, 0.85);
+  animation: turn-glow-pulse 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
 /* hover 3D subtil em cartas e chips clicáveis — profundidade sem exagero */
 .tilt-hover {
   transition: transform var(--dur-normal) var(--ease-out-expo);

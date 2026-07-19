@@ -1,16 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { RoomRow } from "@/lib/types";
 import { PlayingCard } from "./PlayingCard";
-import { useSettings } from "@/lib/settings";
-
-interface Confetto {
-  x: number;
-  rotate: number;
-  duration: number;
-  delay: number;
-}
 
 function MiniBoard({ label, cards }: { label: string; cards: string[] }) {
   return (
@@ -40,46 +31,12 @@ export function WinnerOverlay({
   canShowHand?: boolean;
   onShowHand?: () => void;
 }) {
-  const [settings] = useSettings();
   const winners = room.winners || [];
-  const [confetti, setConfetti] = useState<Confetto[]>([]);
-
-  useEffect(() => {
-    if (settings.reducedMotion) {
-      setConfetti([]);
-      return;
-    }
-    setConfetti(
-      Array.from({ length: 40 }).map(() => ({
-        x: Math.random() * 100,
-        rotate: Math.random() * 360,
-        duration: 2.5 + Math.random() * 1.5,
-        delay: Math.random() * 0.6,
-      }))
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room.hand_number, settings.reducedMotion]);
 
   if (winners.length === 0) return null;
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
-      <div className="absolute inset-0 overflow-hidden">
-        {confetti.map((c, i) => (
-          <motion.span
-            key={i}
-            initial={{ y: -20, x: `${c.x}%`, opacity: 1, rotate: 0 }}
-            animate={{ y: "110vh", rotate: c.rotate }}
-            transition={{ duration: c.duration, delay: c.delay, ease: "easeIn" }}
-            className="absolute w-2 h-2 rounded-sm"
-            style={{
-              backgroundColor: ["#facc15", "#f472b6", "#34d399", "#60a5fa", "#f87171"][i % 5],
-              top: 0,
-            }}
-          />
-        ))}
-      </div>
-
       <motion.div
         initial={{ scale: 0.6, opacity: 0, y: 30 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
