@@ -14,7 +14,20 @@ import { Glossary } from "@/components/Glossary";
 import { useSettings } from "@/lib/settings";
 import { handStrengthLabel } from "@/lib/handStrength";
 import { loadNotes, saveNote, PlayerNote, TAG_META } from "@/lib/notes";
-import { playCheck, playChip, playDeal, playFold, playTurn, playWin, playYourAction, setSoundEnabled } from "@/lib/sounds";
+import {
+  playAllIn,
+  playCheck,
+  playChip,
+  playCountdownTick,
+  playDeal,
+  playFold,
+  playRaise,
+  playShuffle,
+  playTurn,
+  playWin,
+  playYourAction,
+  setSoundEnabled,
+} from "@/lib/sounds";
 import {
   IconArmchair,
   IconArrowLeft,
@@ -105,21 +118,27 @@ export default function RoomPage() {
   // array; keying the bot-tick effect off that array meant an unrelated
   // ripple (e.g. someone toggling sit-out for next hand) could tear down and
   // re-arm the "think" timer before it ever fired, stalling a bot's turn.
-  const actorId = players.find((p) => p.seat === room?.current_turn_seat)?.id ?? null;
-  const actorIsBot = !!players.find((p) => p.seat === room?.current_turn_seat)?.is_bot;
+  const actor = players.find((p) => p.seat === room?.current_turn_seat);
+  const actorId = actor?.id ?? null;
+  const actorIsBot = !!actor?.is_bot;
+  const actorBotDifficulty = actor?.bot_difficulty ?? null;
 
   // when it's a bot's turn, let it "think" for a beat (same thinking-dots
   // animation a human would trigger) then have any connected client ask the
   // server to compute and apply its move — the decision itself runs entirely
-  // server-side in bot_tick, this is just the trigger.
+  // server-side in bot_tick, this is just the trigger. Harder bots pause a
+  // little longer, as if actually working through the equity math; easy
+  // bots snap-decide, matching their "calling station" profile.
   useEffect(() => {
     if (!room || room.status !== "playing" || !actorIsBot) return;
-    const delay = 700 + Math.random() * 900;
+    const base = actorBotDifficulty === "hard" ? 1000 : actorBotDifficulty === "easy" ? 500 : 700;
+    const jitter = actorBotDifficulty === "hard" ? 1300 : 900;
+    const delay = base + Math.random() * jitter;
     const t = setTimeout(() => {
       api.botTick(code).catch(() => {});
     }, delay);
     return () => clearTimeout(t);
-  }, [code, actorId, actorIsBot, room?.status]);
+  }, [code, actorId, actorIsBot, actorBotDifficulty, room?.status]);
 
   // a backgrounded/locked phone throttles or fully suspends JS timers, so the
   // interval-based timeout/bot-tick nudges above can silently stop firing —
@@ -152,12 +171,17 @@ export default function RoomPage() {
       .hand(code, session.playerId, session.token)
       .then((r) => {
         setHoleCards(r.cards);
-        if (r.cards.length) playDeal();
+        if (r.cards.length) {
+          playShuffle();
+          playDeal();
+        }
       })
       .catch(() => {});
   }, [code, session, room?.hand_number, room?.status]);
 
-  // sound reactions
+  // sound reactions — raise and all-in each get their own distinct sound
+  // instead of sharing the plain "call" clink, so a bet size jump is
+  // audible without needing to look at the screen.
   useEffect(() => {
     if (!room?.last_action) return;
     const key = `${room.hand_number}-${room.last_action.seat}-${room.last_action.action}-${room.pot}`;
@@ -165,8 +189,29 @@ export default function RoomPage() {
     lastActionKey.current = key;
     if (room.last_action.action === "fold") playFold();
     else if (room.last_action.action === "check") playCheck();
-    else if (["call", "raise", "all_in"].includes(room.last_action.action)) playChip();
+    else if (room.last_action.action === "raise") playRaise();
+    else if (room.last_action.action === "all_in") playAllIn();
+    else if (room.last_action.action === "call") playChip();
   }, [room?.last_action, room?.hand_number, room?.pot]);
+
+  // a soft tick in the last 3 seconds of your own turn — deliberately not
+  // tied to the visual TurnRing's own 200ms interval (that stays isolated in
+  // Seat.tsx), this just watches the same deadline from the page level since
+  // it needs to fire once per second, not four times.
+  useEffect(() => {
+    if (!room?.turn_expires_at || !you || room.current_turn_seat !== you.seat) return;
+    const deadline = new Date(room.turn_expires_at).getTime();
+    let lastTick = -1;
+    const t = setInterval(() => {
+      const secondsLeft = Math.ceil((deadline - Date.now()) / 1000);
+      if (secondsLeft > 0 && secondsLeft <= 3 && secondsLeft !== lastTick) {
+        lastTick = secondsLeft;
+        playCountdownTick();
+      }
+    }, 250);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.turn_expires_at, room?.current_turn_seat, you?.seat]);
 
   // track the board length right up until showdown, so we know how many
   // community cards still need to flip open (an all-in run-out can resolve
@@ -247,6 +292,27 @@ export default function RoomPage() {
   useEffect(() => {
     if (room && you && room.current_turn_seat === you.seat) playTurn();
   }, [room?.current_turn_seat]);
+
+  // keep the screen from auto-locking mid-hand — nothing kills the mood
+  // faster than the phone dimming out while you're deciding a river call.
+  // Unsupported browsers (and the OS itself, if the user overrides it) just
+  // no-op; this never blocks anything if it fails.
+  useEffect(() => {
+    if (room?.status !== "playing" || typeof navigator === "undefined" || !("wakeLock" in navigator)) return;
+    let sentinel: WakeLockSentinel | null = null;
+    let cancelled = false;
+    navigator.wakeLock
+      .request("screen")
+      .then((s) => {
+        if (cancelled) s.release().catch(() => {});
+        else sentinel = s;
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      sentinel?.release().catch(() => {});
+    };
+  }, [room?.status]);
 
   // pre-actions: queued while it's someone else's turn, fired the instant it becomes yours
   useEffect(() => {
@@ -394,6 +460,15 @@ export default function RoomPage() {
 
   function copyInvite() {
     const url = `${window.location.origin}/room/${code}`;
+    // on a phone, the native share sheet (WhatsApp, Messages, etc.) beats a
+    // silent clipboard copy the friend still has to go paste somewhere —
+    // fall back to copy on desktop or if the user cancels/it's unsupported
+    if (navigator.share) {
+      navigator
+        .share({ title: "Poker Night", text: `Entra na minha mesa: ${code}`, url })
+        .catch(() => {});
+      return;
+    }
     navigator.clipboard?.writeText(url).then(() => {
       setCopied(true);
       pushToast("Link copiado!", "info");
@@ -469,9 +544,10 @@ export default function RoomPage() {
         }}
       />
 
+      <div className="corner-vignette" />
       <ToastStack toasts={toasts} />
 
-      <div className="flex items-center justify-between px-3 py-3 z-20 gap-2">
+      <div className="flex items-center justify-between px-3 py-3 safe-top z-20 gap-2">
         <button
           onClick={() => router.push("/")}
           className="text-white/50 hover:text-white text-sm shrink-0 py-1.5 px-1 inline-flex items-center gap-1"
@@ -495,6 +571,8 @@ export default function RoomPage() {
           <button
             onClick={copyInvite}
             className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-sm font-mono tracking-widest hover:border-amber-400/50 transition"
+            title="Partilhar convite"
+            aria-label="Partilhar convite para a sala"
           >
             {code}{" "}
             {copied ? (
@@ -512,6 +590,7 @@ export default function RoomPage() {
               onClick={handleToggleSitOut}
               className={`py-1.5 px-1.5 rounded-lg ${you.wants_sit_out ? "text-amber-300" : "text-white/50 hover:text-white"}`}
               title={you.wants_sit_out ? "Estou de volta" : "Sentar-me fora"}
+              aria-label={you.wants_sit_out ? "Estou de volta" : "Sentar-me fora"}
             >
               <IconArmchair size={18} active={you.wants_sit_out} />
             </button>
@@ -521,6 +600,7 @@ export default function RoomPage() {
               onClick={handleTogglePause}
               className={`py-1.5 px-1.5 rounded-lg ${room.status === "paused" ? "text-amber-300" : "text-white/50 hover:text-white"}`}
               title={room.status === "paused" ? "Retomar mesa" : "Pausar mesa"}
+              aria-label={room.status === "paused" ? "Retomar mesa" : "Pausar mesa"}
             >
               {room.status === "paused" ? <IconPlay size={18} /> : <IconPause size={18} />}
             </button>
@@ -529,6 +609,7 @@ export default function RoomPage() {
             onClick={() => setGlossaryOpen(true)}
             className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
             title="Glossário de poker"
+            aria-label="Glossário de poker"
           >
             <IconHelpCircle size={18} />
           </button>
@@ -536,6 +617,7 @@ export default function RoomPage() {
             onClick={() => setStatsOpen((v) => !v)}
             className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
             title="Estatísticas da sessão"
+            aria-label="Estatísticas da sessão"
           >
             <IconBarChart size={18} />
           </button>
@@ -544,16 +626,23 @@ export default function RoomPage() {
             disabled={handHistory.length === 0}
             className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg disabled:opacity-30"
             title="Histórico de mãos"
+            aria-label="Histórico de mãos"
           >
             <IconHistory size={18} />
           </button>
-          <button onClick={toggleSound} className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg">
+          <button
+            onClick={toggleSound}
+            className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
+            title={settings.sound ? "Desligar som" : "Ligar som"}
+            aria-label={settings.sound ? "Desligar som" : "Ligar som"}
+          >
             {settings.sound ? <IconVolume2 size={18} /> : <IconVolumeX size={18} />}
           </button>
           <button
             onClick={() => setSettingsOpen(true)}
             className="text-white/50 hover:text-white py-1.5 px-1.5 rounded-lg"
             title="Definições"
+            aria-label="Definições"
           >
             <IconSettings size={18} />
           </button>

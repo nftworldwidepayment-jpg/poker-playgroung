@@ -146,7 +146,7 @@ export function ActionBar({
       initial={{ y: 90, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="fixed bottom-0 inset-x-0 z-30 bg-gradient-to-t from-black via-black/95 to-black/0 pt-12 pb-4 px-4"
+      className="fixed bottom-0 inset-x-0 z-30 bg-gradient-to-t from-black via-black/95 to-black/0 pt-12 pb-4 px-4 safe-bottom"
     >
       <div className="max-w-xl mx-auto flex flex-col gap-3">
         {canRaise && (

@@ -80,6 +80,61 @@ export function playChip() {
   noiseBurst(0, 0.03, 0.02, 4000, "highpass", c);
 }
 
+// a raise gets a heavier, three-clink cascade instead of the plain call/check
+// "two clinks" — the ear should be able to tell a raise happened without
+// looking at the screen.
+export function playRaise() {
+  if (!enabled) return;
+  const c = getCtx();
+  if (!c) return;
+  tone(1900, 0, 0.05, "square", 0.05, c);
+  tone(2400, 0.05, 0.05, "square", 0.045, c);
+  tone(3000, 0.1, 0.06, "square", 0.04, c);
+  noiseBurst(0, 0.05, 0.03, 4500, "highpass", c);
+}
+
+// all-in: a low rising sweep under the chip cascade — meant to feel like a
+// stack of everything hitting the felt at once, not just "a bigger raise"
+export function playAllIn() {
+  if (!enabled) return;
+  const c = getCtx();
+  if (!c) return;
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(90, c.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(220, c.currentTime + 0.35);
+  g.gain.setValueAtTime(0, c.currentTime);
+  g.gain.linearRampToValueAtTime(0.06, c.currentTime + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.4);
+  osc.connect(g).connect(c.destination);
+  osc.start();
+  osc.stop(c.currentTime + 0.42);
+  tone(2100, 0.1, 0.05, "square", 0.045, c);
+  tone(2700, 0.15, 0.05, "square", 0.04, c);
+  tone(3300, 0.2, 0.06, "square", 0.035, c);
+  haptic([12, 30, 12, 30, 20]);
+}
+
+// a soft riffle-shuffle burst right as a new hand starts dealing
+export function playShuffle() {
+  if (!enabled) return;
+  const c = getCtx();
+  if (!c) return;
+  for (let i = 0; i < 5; i++) {
+    noiseBurst(i * 0.045, 0.05, 0.025, 2600 + i * 200, "bandpass", c);
+  }
+}
+
+// a single soft tick, meant to be called sparingly (last few seconds of your
+// own turn) — deliberately quieter than playTurn so it doesn't nag
+export function playCountdownTick() {
+  if (!enabled) return;
+  const c = getCtx();
+  if (!c) return;
+  tone(1200, 0, 0.04, "sine", 0.03, c);
+}
+
 export function playDeal() {
   if (!enabled) return;
   const c = getCtx();
@@ -109,6 +164,7 @@ export function playTurn() {
   const c = getCtx();
   if (!c) return;
   tone(880, 0, 0.08, "sine", 0.05, c);
+  haptic(20);
 }
 
 export function playWin() {

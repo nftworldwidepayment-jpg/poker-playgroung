@@ -60,7 +60,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             exit={{ scale: 0.92, opacity: 0, y: 16 }}
             transition={{ type: "spring", stiffness: 260, damping: 24 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-sm bg-gradient-to-b from-[var(--bg-raised)] to-[var(--bg-deep)] border border-white/10 rounded-2xl p-5 shadow-2xl"
+            className="relative w-full max-w-sm max-h-[90vh] overflow-y-auto bg-gradient-to-b from-[var(--bg-raised)] to-[var(--bg-deep)] border border-white/10 rounded-2xl p-5 shadow-2xl"
           >
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-serif text-xl font-bold text-[var(--text-warm)]">Definições</h2>
@@ -148,9 +148,20 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               />
             </div>
 
+            <div className="text-[10px] uppercase tracking-widest text-[var(--gold)]/70 font-semibold mt-4 mb-1.5">
+              Novidades
+            </div>
+            <ul className="text-[11px] text-white/45 leading-relaxed list-disc pl-4 mb-1 space-y-0.5 max-h-24 overflow-y-auto">
+              <li>Corrigido: um all-in desnivelado já não mostra o stack maior a &quot;ganhar&quot; a sua própria sobra não igualada</li>
+              <li>Slow roll dramático antes de revelar o vencedor</li>
+              <li>Ícones profissionais em vez de emojis em toda a app</li>
+              <li>Mesas de 7-9 jogadores já não se sobrepõem no telemóvel</li>
+              <li>Bots com tempo de decisão consoante a dificuldade</li>
+            </ul>
+
             <button
               onClick={onClose}
-              className="mt-5 w-full py-2.5 rounded-xl bg-[var(--gold)] text-slate-900 font-bold hover:brightness-110 transition"
+              className="mt-4 w-full py-2.5 rounded-xl bg-[var(--gold)] text-slate-900 font-bold hover:brightness-110 transition"
             >
               Concluído
             </button>

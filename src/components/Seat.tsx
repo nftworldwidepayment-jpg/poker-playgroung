@@ -204,7 +204,7 @@ function SeatImpl({
         )}
         {isTurn && <TurnRing turnExpiresAt={turnExpiresAt} turnSeconds={turnSeconds} />}
         {allIn && (
-          <span className="absolute -bottom-2 px-1.5 py-0.5 rounded-full bg-rose-600 text-[9px] font-bold shadow">
+          <span className="all-in-badge-pulse absolute -bottom-2 px-1.5 py-0.5 rounded-full bg-rose-600 text-[9px] font-bold shadow">
             ALL-IN
           </span>
         )}

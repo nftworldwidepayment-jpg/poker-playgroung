@@ -28,6 +28,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0a0e12",
+  // required for env(safe-area-inset-*) to resolve to anything but 0 on iOS —
+  // without it the notch/Dynamic Island/home-indicator padding is a no-op
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -37,9 +40,15 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="pt"
       className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased`}
     >
+      <head>
+        {/* both render on every hand of every room — worth a priority hint
+            over waiting for the browser to discover them mid-render */}
+        <link rel="preload" as="image" href="/images/card-back.webp" />
+        <link rel="preload" as="image" href="/images/table-bg.webp" />
+      </head>
       <body className="min-h-full flex flex-col bg-slate-950 text-white">
         <DeckFilters />
         <PreferenceEffects />
