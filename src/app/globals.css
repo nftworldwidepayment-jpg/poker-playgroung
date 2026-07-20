@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* app é sempre escuro — não existe nenhum ecrã com design "light mode",
+     por isso não deixamos isto depender de prefers-color-scheme (que na
+     prática resultava em fundo branco a piscar por trás de tudo sempre que
+     o SO/browser não reportasse explicitamente um esquema escuro) */
+  --background: #05070a;
+  --foreground: #f2ede3;
 
   /* ── Design tokens: paleta "luxo discreto" ─────────────────────────────
      Fundo nunca preto puro; dourado champanhe como único acento; verde/
@@ -30,13 +34,6 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-serif: var(--font-playfair);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

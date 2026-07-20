@@ -8,9 +8,8 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { CreateTableModal, loadCreatePrefs } from "@/components/CreateTableModal";
 import { JoinRoomModal } from "@/components/JoinRoomModal";
 import { useSettings } from "@/lib/settings";
-import { IconBot, IconCards, IconFlame, IconGift, IconLeaf, IconSettings, IconSmartphone, IconSwords, IconZap } from "@/components/icons";
+import { IconBot, IconFlame, IconGift, IconLeaf, IconSettings, IconSmartphone, IconSwords, IconZap } from "@/components/icons";
 
-const SUITS = ["♠", "♥", "♦", "♣"];
 const NAME_KEY = "poker-player-name";
 
 function loadSavedName(): string {
@@ -49,40 +48,6 @@ function FloatingSuits({ reduced }: { reduced: boolean }) {
           transition={{ duration: it.dur, delay: it.delay, repeat: Infinity, ease: "easeInOut" }}
         >
           {it.s}
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-function ChipOrbit({ reduced }: { reduced: boolean }) {
-  const chips = [
-    { img: "/images/chip-black.webp", x: "-6%", y: "8%", size: 78, rotate: -18, delay: 0 },
-    { img: "/images/chip-red.webp", x: "82%", y: "62%", size: 64, rotate: 22, delay: 0.4 },
-    { img: "/images/chip-green.webp", x: "-2%", y: "70%", size: 56, rotate: 12, delay: 0.8 },
-    { img: "/images/chip-purple.webp", x: "86%", y: "4%", size: 50, rotate: -10, delay: 1.1 },
-  ];
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden hidden md:block">
-      {chips.map((c, i) => (
-        <motion.div
-          key={i}
-          className="absolute drop-shadow-[0_18px_30px_rgba(0,0,0,0.6)]"
-          style={{ left: c.x, top: c.y, width: c.size, height: c.size }}
-          initial={{ opacity: 0, y: 20, rotate: c.rotate - 10 }}
-          animate={reduced ? { opacity: 0.9, rotate: c.rotate } : { opacity: 0.9, y: [0, -10, 0], rotate: c.rotate }}
-          transition={
-            reduced
-              ? { duration: 0.8, delay: c.delay }
-              : {
-                  opacity: { duration: 0.8, delay: c.delay },
-                  y: { duration: 6 + i, repeat: Infinity, ease: "easeInOut", delay: c.delay },
-                  rotate: { duration: 0.8, delay: c.delay },
-                }
-          }
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.img} alt="" className="w-full h-full select-none" draggable={false} />
         </motion.div>
       ))}
     </div>
@@ -208,24 +173,18 @@ export default function Home() {
         <IconSettings size={18} />
       </button>
 
-      {/* layered premium background */}
+      {/* same background language as the table screen (one warm glow fading to
+          near-black, plus the felt's own grain) instead of a separate,
+          unrelated "landing page" treatment — the two screens should feel
+          like one app, not a marketing page bolted onto a game */}
       <div
-        className="absolute inset-0 -z-20"
+        className="absolute inset-0 -z-20 felt-texture"
         style={{
-          background:
-            "radial-gradient(ellipse 70% 45% at 20% -10%, rgba(16,185,129,0.16), transparent), " +
-            "radial-gradient(ellipse 60% 45% at 100% 10%, rgba(245,158,11,0.09), transparent), " +
-            "radial-gradient(ellipse 70% 55% at 50% 115%, rgba(168,85,247,0.10), transparent), " +
-            "#030507",
+          background: "radial-gradient(ellipse 70% 45% at 50% -5%, rgba(201,169,97,0.14), transparent), #030507",
         }}
       />
-      <div
-        className="absolute inset-0 -z-20 opacity-[0.05]"
-        style={{ backgroundImage: "repeating-linear-gradient(45deg, #fff 0 1px, transparent 1px 26px)" }}
-      />
-      <div className="absolute inset-0 -z-10" style={{ boxShadow: "inset 0 0 220px 60px rgba(0,0,0,0.85)" }} />
+      <div className="corner-vignette" />
       <FloatingSuits reduced={settings.reducedMotion} />
-      <ChipOrbit reduced={settings.reducedMotion} />
 
       <motion.div
         initial={{ opacity: 0, y: settings.reducedMotion ? 0 : 24 }}
@@ -235,27 +194,19 @@ export default function Home() {
       >
         <div className="text-center mb-8">
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="relative inline-block mb-2"
+            className="text-2xl text-[var(--gold)]/70 mb-1 select-none"
+            aria-hidden
           >
-            <span className="absolute inset-0 blur-2xl bg-amber-400/20 rounded-full scale-150" aria-hidden />
-            <IconCards size={40} className="relative text-amber-300" />
+            ♠
           </motion.div>
 
-          <h1 className="relative font-serif text-5xl sm:text-6xl font-black tracking-tight leading-none">
-            <span className="bg-gradient-to-b from-amber-200 via-amber-300 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_20px_rgba(245,158,11,0.35)]">
-              Poker Night
-            </span>
+          <h1 className="font-serif text-4xl sm:text-5xl font-bold tracking-tight leading-none text-[var(--text-warm)]">
+            Poker Night
           </h1>
-          <div className="flex items-center justify-center gap-2 mt-2 text-white/30 text-[11px] font-mono tracking-widest">
-            {SUITS.map((s, i) => (
-              <span key={i} className={i % 2 === 0 ? "text-rose-400/50" : "text-white/25"}>
-                {s}
-              </span>
-            ))}
-          </div>
+          <div className="mx-auto mt-3 h-px w-16 bg-gradient-to-r from-transparent via-[var(--gold)]/50 to-transparent" />
           <p className="text-white/45 text-sm mt-3 font-serif italic">
             Texas Hold&apos;em &amp; PLO4 — com amigos, ou sozinho contra o computador.
           </p>
@@ -283,17 +234,15 @@ export default function Home() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.5 }}
-          className="relative bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-[1.75rem] p-2 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)]"
+          className="relative bg-[var(--bg-raised)]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-2 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)]"
         >
-          <div className="pointer-events-none absolute inset-0 rounded-[1.75rem] border border-white/[0.06] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
-
-          {/* segmented tabs: friends (gold) vs. bot (neutral silver) — distinct accent
-              per mode so it visually reads as two different experiences, not one
-              crowded form, while staying inside the app's gold/neutral palette */}
+          {/* segmented tabs: friends vs. bot — solid fills instead of gradients,
+              one flat gold tone and one flat neutral tone, so the two modes
+              read as distinct without either pill looking like a glossy button */}
           <div className="relative flex gap-1 p-1 mb-1">
             <button
               onClick={() => setMode("friends")}
-              className={`relative flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+              className={`relative flex-1 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 mode === "friends" ? "text-slate-900" : "text-white/50 hover:text-white/80"
               }`}
             >
@@ -301,14 +250,14 @@ export default function Home() {
                 <motion.span
                   layoutId="home-tab-bg"
                   transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500"
+                  className="absolute inset-0 rounded-2xl bg-[var(--gold)]"
                 />
               )}
               <span className="relative">♠ Com Amigos</span>
             </button>
             <button
               onClick={() => setMode("bot")}
-              className={`relative flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+              className={`relative flex-1 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 mode === "bot" ? "text-slate-900" : "text-white/50 hover:text-white/80"
               }`}
             >
@@ -316,7 +265,7 @@ export default function Home() {
                 <motion.span
                   layoutId="home-tab-bg"
                   transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-slate-300 to-slate-400"
+                  className="absolute inset-0 rounded-2xl bg-slate-300"
                 />
               )}
               <span className="relative inline-flex items-center gap-1.5">
@@ -338,10 +287,9 @@ export default function Home() {
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setCreateOpen(true)}
-                  className="group relative w-full py-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-900 font-bold shadow-[0_10px_30px_-8px_rgba(245,158,11,0.6)] overflow-hidden"
+                  className="w-full py-4 rounded-2xl bg-[var(--gold)] hover:bg-[var(--gold-bright)] text-slate-900 font-bold shadow-[0_1px_0_0_rgba(255,255,255,0.3)_inset,0_10px_24px_-10px_rgba(0,0,0,0.6)] transition-colors"
                 >
-                  <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-                  <span className="relative text-base">♠ Criar Mesa</span>
+                  <span className="text-base">♠ Criar Mesa</span>
                 </motion.button>
 
                 {canQuickCreate && (
@@ -370,7 +318,7 @@ export default function Home() {
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setJoinOpen(true)}
-                  className="w-full py-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 text-white/80 font-semibold transition"
+                  className="w-full py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 text-white/80 font-semibold transition"
                 >
                   Entrar em Sala
                 </motion.button>
@@ -408,7 +356,7 @@ export default function Home() {
                   maxLength={20}
                   placeholder="O teu nome"
                   aria-label="O teu nome"
-                  className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-white/40 transition"
+                  className="w-full bg-black/30 border border-white/10 rounded-2xl px-3.5 py-2.5 text-sm outline-none focus:border-white/40 transition"
                 />
 
                 <div className="flex flex-col gap-2">
@@ -424,7 +372,7 @@ export default function Home() {
                       whileTap={{ scale: 0.98 }}
                       disabled={!!botBusy}
                       onClick={() => handlePlayVsBot(d.id)}
-                      className="group relative flex items-center gap-3 w-full text-left py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 transition disabled:opacity-50"
+                      className="group relative flex items-center gap-3 w-full text-left py-3 px-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 transition disabled:opacity-50"
                     >
                       <d.Icon size={22} className="shrink-0 text-white/70" />
                       <span className="flex-1 min-w-0">
