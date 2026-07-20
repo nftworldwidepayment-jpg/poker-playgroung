@@ -425,9 +425,11 @@ function awardFoldWin(ctx: GameCtx, winner: PlayerRow) {
   ];
   room.revealed_hands = null;
   // rabbit hunt: preview of the board that would have come, purely for curiosity —
-  // doesn't touch the deck, since the hand is already decided.
+  // doesn't touch the deck, since the hand is already decided. Host-toggleable
+  // (some tables find it spoils the "what if" tension rather than adding to it).
   const remainingCards = 5 - room.community_cards.length;
-  room.rabbit_cards = remainingCards > 0 ? [...room.deck].slice(-remainingCards).reverse() : null;
+  room.rabbit_cards =
+    room.rabbit_hunt_enabled && remainingCards > 0 ? [...room.deck].slice(-remainingCards).reverse() : null;
   room.pot = 0;
   room.pots = [];
   room.phase = "showdown";

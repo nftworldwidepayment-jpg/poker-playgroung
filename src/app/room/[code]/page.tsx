@@ -401,6 +401,15 @@ export default function RoomPage() {
     }
   }
 
+  async function handleToggleRabbitHunt() {
+    if (!session || !room) return;
+    try {
+      await api.toggleRabbitHunt(code, session.playerId, session.token, !room.rabbit_hunt_enabled);
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : "Erro ao alterar Rabbit Hunt");
+    }
+  }
+
   async function handleTogglePause() {
     if (!session || !room) return;
     try {
@@ -803,6 +812,17 @@ export default function RoomPage() {
                     className="accent-amber-500 w-3.5 h-3.5"
                   />
                   Run It Twice
+                </label>
+              )}
+              {isHost && (
+                <label className="flex items-center gap-1.5 text-white/50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={room.rabbit_hunt_enabled}
+                    onChange={handleToggleRabbitHunt}
+                    className="accent-amber-500 w-3.5 h-3.5"
+                  />
+                  Rabbit Hunt
                 </label>
               )}
             </div>

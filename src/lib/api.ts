@@ -43,6 +43,7 @@ export interface CreateRoomOptions {
   buyIn: number;
   gameType: string;
   runItTwiceEnabled?: boolean;
+  rabbitHuntEnabled?: boolean;
   maxPlayers?: number;
   ante?: number;
   turnSeconds?: number;
@@ -73,6 +74,8 @@ export const api = {
     call("toggle_sit_out", { playerId, token, enabled }) as Promise<{ ok: boolean }>,
   toggleRunItTwice: (code: string, playerId: string, token: string, enabled: boolean) =>
     call("toggle_run_it_twice", { code, playerId, token, enabled }) as Promise<{ ok: boolean }>,
+  toggleRabbitHunt: (code: string, playerId: string, token: string, enabled: boolean) =>
+    call("toggle_rabbit_hunt", { code, playerId, token, enabled }) as Promise<{ ok: boolean }>,
   showHand: (code: string, playerId: string, token: string) =>
     call("show_hand", { code, playerId, token }) as Promise<{ ok: boolean }>,
   togglePause: (code: string, playerId: string, token: string, paused: boolean) =>

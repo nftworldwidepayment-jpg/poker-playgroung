@@ -41,6 +41,7 @@ export interface RoomRow {
   revealed_hands: { playerId: string; cards: Card[] }[] | null;
   created_at: string;
   rabbit_cards: Card[] | null;
+  rabbit_hunt_enabled: boolean;
   run_it_twice_enabled: boolean;
   run_it_twice_boards: Card[][] | null;
   last_hand: LastHandSnapshot | null;

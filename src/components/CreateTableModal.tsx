@@ -24,6 +24,7 @@ interface Prefs {
   anteOn: boolean;
   allowStraddle: boolean;
   runItTwice: boolean;
+  rabbitHunt: boolean;
   isPrivate: boolean;
 }
 
@@ -39,6 +40,7 @@ const DEFAULT_PREFS: Prefs = {
   anteOn: false,
   allowStraddle: true,
   runItTwice: false,
+  rabbitHunt: true,
   isPrivate: false,
 };
 
@@ -270,6 +272,7 @@ export function CreateTableModal({
         buyIn: prefs.buyIn,
         gameType: prefs.gameType,
         runItTwiceEnabled: prefs.runItTwice,
+        rabbitHuntEnabled: prefs.rabbitHunt,
         maxPlayers: prefs.maxPlayers,
         ante: finalPrefs.ante,
         turnSeconds: prefs.turnSeconds,
@@ -717,6 +720,14 @@ export function CreateTableModal({
                             <div className="text-[11px] text-white/35">Divide o pote em duas mesas em all-in</div>
                           </div>
                           <Switch checked={prefs.runItTwice} onChange={(v) => patch({ runItTwice: v })} label="Run It Twice" />
+                        </div>
+
+                        <div className="flex items-center justify-between bg-black/20 border border-white/10 rounded-xl px-3.5 py-3">
+                          <div>
+                            <div className="text-sm text-white/80 font-semibold">Rabbit Hunt</div>
+                            <div className="text-[11px] text-white/35">Mostra as cartas que viriam depois de alguém desistir</div>
+                          </div>
+                          <Switch checked={prefs.rabbitHunt} onChange={(v) => patch({ rabbitHunt: v })} label="Rabbit Hunt" />
                         </div>
                       </motion.div>
                     )}

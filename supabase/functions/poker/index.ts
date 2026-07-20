@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
         const buyIn = Math.max(bigBlind * 10, Number(body.buyIn) || 1000);
         const gameType = body.gameType === "plo4" ? "plo4" : "nlhe";
         const runItTwiceEnabled = !!body.runItTwiceEnabled;
+        const rabbitHuntEnabled = body.rabbitHuntEnabled !== false;
         const maxPlayers = [2, 6, 9].includes(Number(body.maxPlayers)) ? Number(body.maxPlayers) : 9;
         const ante = Math.max(0, Math.min(Number(body.ante) || 0, bigBlind * 5));
         const turnSeconds = [15, 30, 60].includes(Number(body.turnSeconds)) ? Number(body.turnSeconds) : 30;
@@ -81,6 +82,7 @@ Deno.serve(async (req) => {
             phase: "waiting",
             game_type: gameType,
             run_it_twice_enabled: runItTwiceEnabled,
+            rabbit_hunt_enabled: rabbitHuntEnabled,
             max_players: maxPlayers,
             ante,
             turn_seconds: turnSeconds,
@@ -170,9 +172,22 @@ Deno.serve(async (req) => {
         let seat = 0;
         while (usedSeats.has(seat)) seat++;
 
-        const botCount = (players || []).filter((p) => p.is_bot).length;
         const label = { easy: "Fácil", medium: "Médio", hard: "Difícil" }[botDifficulty as "easy" | "medium" | "hard"];
-        const name = `Bot ${label} ${botCount + 1}`;
+        // flavour nicknames matching each profile's actual play style in bot.ts
+        // (easy = loose-passive calling station, medium = solid TAG regular,
+        // hard = aggressive/balanced professional) — falls back to a numbered
+        // name once a table's nicknames for that difficulty run out.
+        const NICKNAMES: Record<string, string[]> = {
+          easy: ["Chamador", "Curioso", "Otimista", "Sortudo"],
+          medium: ["Regular", "Sólido", "Metódico", "Disciplinado"],
+          hard: ["Predador", "Tubarão", "Maníaco", "Impiedoso"],
+        };
+        const usedNames = new Set((players || []).filter((p) => p.is_bot).map((p) => p.name));
+        const pool = NICKNAMES[botDifficulty as "easy" | "medium" | "hard"];
+        const available = pool.filter((n) => !usedNames.has(`Bot ${label} "${n}"`));
+        const nickname = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : null;
+        const botCount = (players || []).filter((p) => p.is_bot).length;
+        const name = nickname ? `Bot ${label} "${nickname}"` : `Bot ${label} ${botCount + 1}`;
 
         const { data: bot, error } = await db
           .from("players")
@@ -350,6 +365,20 @@ Deno.serve(async (req) => {
         const { data: player } = await db.from("players").select("is_host").eq("id", playerId).single();
         if (!player?.is_host) return json({ error: "Só o anfitrião pode alterar isto" }, 403);
         await db.from("rooms").update({ run_it_twice_enabled: !!enabled }).eq("id", room.id);
+        return json({ ok: true });
+      }
+
+      case "toggle_rabbit_hunt": {
+        const code = String(body.code || "").trim().toUpperCase();
+        const { playerId, token, enabled } = body as { playerId: string; token: string; enabled: boolean };
+        const db = admin();
+        const { data: room } = await db.from("rooms").select("id").eq("code", code).single();
+        if (!room) return json({ error: "Sala não encontrada" }, 404);
+        const ok = await verifyPlayer(room.id, playerId, token);
+        if (!ok) return json({ error: "Não autorizado" }, 401);
+        const { data: player } = await db.from("players").select("is_host").eq("id", playerId).single();
+        if (!player?.is_host) return json({ error: "Só o anfitrião pode alterar isto" }, 403);
+        await db.from("rooms").update({ rabbit_hunt_enabled: !!enabled }).eq("id", room.id);
         return json({ ok: true });
       }
 

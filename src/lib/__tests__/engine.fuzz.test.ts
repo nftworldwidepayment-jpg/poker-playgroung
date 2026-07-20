@@ -17,6 +17,7 @@ function mkRoom(o: Partial<RoomRow> = {}): RoomRow {
     community_cards: [], pot: 0, pots: [], current_bet: 0, min_raise: 20, deck: [],
     turn_expires_at: null, hand_number: 0, max_players: 9, last_action: null,
     winners: null, revealed_hands: null, created_at: "", rabbit_cards: null,
+    rabbit_hunt_enabled: true,
     run_it_twice_enabled: false, run_it_twice_boards: null, last_hand: null, all_in_equity: null,
     ante: 0, turn_seconds: 30, allow_straddle: true, is_private: false, paused_at: null,
     table_name: null,
@@ -276,8 +277,35 @@ function testUncalledBetIsNotAWin(): boolean {
   return true;
 }
 
+function testRabbitHuntToggle(): boolean {
+  function runFoldWin(rabbitHuntEnabled: boolean): boolean {
+    const p0 = mkPlayer(0, 1000);
+    const p1 = mkPlayer(1, 1000);
+    const room = mkRoom({ small_blind: 10, big_blind: 20, dealer_seat: 0, rabbit_hunt_enabled: rabbitHuntEnabled });
+    const players = [p0, p1];
+    const ctx = { room, players, holeCards: {} as Record<string, Card[]> };
+    startHand(ctx);
+    const firstSeat = room.current_turn_seat!;
+    const firstPlayer = players.find((p) => p.seat === firstSeat)!;
+    applyAction(ctx, firstPlayer.id, "fold");
+    return rabbitHuntEnabled ? room.rabbit_cards != null && room.rabbit_cards.length === 5 : room.rabbit_cards == null;
+  }
+
+  if (!runFoldWin(true)) {
+    console.log("[rabbit-hunt] !!! enabled=true should populate rabbit_cards on a fold win");
+    return false;
+  }
+  if (!runFoldWin(false)) {
+    console.log("[rabbit-hunt] !!! enabled=false must never populate rabbit_cards");
+    return false;
+  }
+  console.log("[rabbit-hunt] OK — toggle honoured in both directions");
+  return true;
+}
+
 let allOk = true;
 allOk = testUncalledBetIsNotAWin() && allOk;
+allOk = testRabbitHuntToggle() && allOk;
 allOk = runFuzz(3, "nlhe", false, false, 500, "nlhe-3p") && allOk;
 allOk = runFuzz(4, "nlhe", false, true, 500, "nlhe-4p-straddle") && allOk;
 allOk = runFuzz(3, "plo4", false, false, 500, "plo4-3p") && allOk;
