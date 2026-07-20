@@ -287,8 +287,9 @@ export default function Home() {
         >
           <div className="pointer-events-none absolute inset-0 rounded-[1.75rem] border border-white/[0.06] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
 
-          {/* segmented tabs: friends (gold) vs. bot (cyan) — distinct accent per mode
-              so it visually reads as two different experiences, not one crowded form */}
+          {/* segmented tabs: friends (gold) vs. bot (neutral silver) — distinct accent
+              per mode so it visually reads as two different experiences, not one
+              crowded form, while staying inside the app's gold/neutral palette */}
           <div className="relative flex gap-1 p-1 mb-1">
             <button
               onClick={() => setMode("friends")}
@@ -315,7 +316,7 @@ export default function Home() {
                 <motion.span
                   layoutId="home-tab-bg"
                   transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-400 to-cyan-500"
+                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-slate-300 to-slate-400"
                 />
               )}
               <span className="relative inline-flex items-center gap-1.5">
@@ -407,7 +408,7 @@ export default function Home() {
                   maxLength={20}
                   placeholder="O teu nome"
                   aria-label="O teu nome"
-                  className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-cyan-400/50 transition"
+                  className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-white/40 transition"
                 />
 
                 <div className="flex flex-col gap-2">
@@ -423,16 +424,16 @@ export default function Home() {
                       whileTap={{ scale: 0.98 }}
                       disabled={!!botBusy}
                       onClick={() => handlePlayVsBot(d.id)}
-                      className="group relative flex items-center gap-3 w-full text-left py-3 px-4 rounded-xl bg-white/5 hover:bg-cyan-400/10 border border-white/10 hover:border-cyan-400/40 transition disabled:opacity-50"
+                      className="group relative flex items-center gap-3 w-full text-left py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 transition disabled:opacity-50"
                     >
-                      <d.Icon size={22} className="shrink-0 text-cyan-300/80" />
+                      <d.Icon size={22} className="shrink-0 text-white/70" />
                       <span className="flex-1 min-w-0">
-                        <span className="block text-sm font-semibold text-white/85 group-hover:text-cyan-200">
+                        <span className="block text-sm font-semibold text-white/85 group-hover:text-white">
                           {d.label}
                         </span>
                         <span className="block text-[11px] text-white/40 truncate">{d.desc}</span>
                       </span>
-                      <span className="text-cyan-300/60 text-sm shrink-0">
+                      <span className="text-white/50 text-sm shrink-0">
                         {botBusy === d.id ? "…" : "→"}
                       </span>
                     </motion.button>

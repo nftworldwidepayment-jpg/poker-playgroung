@@ -70,6 +70,7 @@ function SeatImpl({
   isDealer,
   holeCards,
   showCards,
+  hasRevealedHand,
   turnExpiresAt,
   turnSeconds,
   style,
@@ -95,6 +96,7 @@ function SeatImpl({
   isDealer: boolean;
   holeCards?: string[];
   showCards: boolean;
+  hasRevealedHand?: boolean;
   turnExpiresAt: string | null;
   turnSeconds: number;
   style: React.CSSProperties;
@@ -173,27 +175,36 @@ function SeatImpl({
 
       {/* items-start (not stretch) + no fixed height: the card's own aspect-[5/7] must
           win, or flex cross-axis stretch squashes it into whatever height happens to be here */}
-      {!sittingOut && (
-        <div className="flex gap-1.5 mb-1.5 items-start">
-          {(holeCards || Array.from({ length: cardCount })).map((c, i) => (
-            <div key={i} className={isYou ? "tilt-hover" : undefined}>
-              <PlayingCard
-                card={c as string | undefined}
-                hidden={!showCards}
-                size={isYou ? "xl" : "md"}
-                delay={i * 0.18}
-                highlight={isYou && showCards}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {!sittingOut && (!folded || hasRevealedHand) && (
+          <motion.div
+            exit={{ opacity: 0, y: 30, rotate: isYou ? 0 : 8, transition: { duration: 0.4, ease: [0.4, 0, 1, 1] } }}
+            className="flex gap-1.5 mb-1.5 items-start"
+          >
+            {(holeCards || Array.from({ length: cardCount })).map((c, i) => (
+              <motion.div
+                key={i}
+                className={isYou ? "tilt-hover" : undefined}
+                exit={{ x: i === 0 ? -18 : 18, rotate: i === 0 ? -20 : 20, transition: { duration: 0.4, ease: [0.4, 0, 1, 1] } }}
+              >
+                <PlayingCard
+                  card={c as string | undefined}
+                  hidden={!showCards}
+                  size={isYou ? "xl" : "md"}
+                  delay={i * 0.18}
+                  highlight={isYou && showCards}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div
         className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden ${
           avatarUrl ? "bg-slate-800" : `bg-gradient-to-br ${color}`
         } flex items-center justify-center text-white font-bold text-base sm:text-lg border-2 ${
-          isTurn ? "border-amber-300 turn-glow" : isYou ? "border-cyan-300/80" : "border-white/20"
+          isTurn ? "border-amber-300 turn-glow" : isYou ? "border-white/70" : "border-white/20"
         } ${folded ? "opacity-40 grayscale" : ""} ${sittingOut ? "opacity-60 sitting-out-sepia" : ""} ${
           isWinner ? "win-glow" : ""
         } ${isYou && isTurn ? "thinking-breathe" : ""} ${
@@ -273,7 +284,7 @@ function SeatImpl({
         }`}
         title={!isYou ? noteTitle || "Clica para adicionar uma nota privada" : undefined}
       >
-        <div className={`text-xs font-serif font-semibold ${isYou ? "text-cyan-300" : "text-amber-50/90"} max-w-[100px] truncate flex items-center justify-center gap-1`}>
+        <div className={`text-xs font-serif font-bold ${isYou ? "text-white" : "text-amber-50/90"} max-w-[100px] truncate flex items-center justify-center gap-1`}>
           {noteDotColor && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${noteDotColor}`} />}
           {player.is_bot && (
             <span title={`Bot — ${player.bot_difficulty || "medium"}`} className="shrink-0">
@@ -295,7 +306,7 @@ function SeatImpl({
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-[10px] font-mono text-cyan-300 bg-black/50 rounded-full px-2 py-0.5 border border-cyan-400/20"
+          className="text-[10px] font-mono text-white bg-black/50 rounded-full px-2 py-0.5 border border-white/20"
         >
           {equityPct}%
         </motion.div>

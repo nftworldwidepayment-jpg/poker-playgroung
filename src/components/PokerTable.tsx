@@ -148,6 +148,40 @@ export function PokerTable({
   const visibleBoard = useStaggeredBoard(room);
   const youIdx = Math.max(0, ordered.findIndex((p) => p.id === youId));
   const [settings] = useSettings();
+
+  // chips travelling from a seat to the pot: the server only ever tells us
+  // "this player's current_bet dropped to 0" (the moment a street collects
+  // everyone's bets into the pot) — there's no separate "chips moved" event,
+  // so we detect that transition ourselves and play a short one-off flight
+  // from that seat's position to the felt's center, purely cosmetic and
+  // self-cleaning (never touches game state).
+  const prevBetsRef = useRef<Record<string, number>>({});
+  const [flyingChips, setFlyingChips] = useState<
+    { key: string; left: string; top: string; amount: number }[]
+  >([]);
+  useEffect(() => {
+    const prev = prevBetsRef.current;
+    const next: Record<string, number> = {};
+    const arrivals: { key: string; left: string; top: string; amount: number }[] = [];
+    ordered.forEach((p, i) => {
+      next[p.id] = p.current_bet;
+      const prevBet = prev[p.id] ?? 0;
+      if (prevBet > 0 && p.current_bet === 0) {
+        const rel = (i - youIdx + total) % total;
+        const pos = seatStyles[rel];
+        arrivals.push({ key: `${p.id}-${Date.now()}-${i}`, left: String(pos.left), top: String(pos.top), amount: prevBet });
+      }
+    });
+    prevBetsRef.current = next;
+    if (arrivals.length > 0 && !settings.reducedMotion) {
+      setFlyingChips((f) => [...f, ...arrivals]);
+      const t = setTimeout(() => {
+        setFlyingChips((f) => f.filter((c) => !arrivals.some((a) => a.key === c.key)));
+      }, 650);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [players, room.hand_number]);
   const allInKey = `${room.hand_number}:${ordered.filter((p) => p.status === "all_in").map((p) => p.id).join(",")}`;
   const seenAllInKey = useRef<string | null>(null);
   const [showAllInVignette, setShowAllInVignette] = useState(false);
@@ -270,11 +304,26 @@ export function PokerTable({
         </AnimatePresence>
       </div>
 
+      <AnimatePresence>
+        {flyingChips.map((c) => (
+          <motion.div
+            key={c.key}
+            initial={{ left: c.left, top: c.top, opacity: 1, scale: 1 }}
+            animate={{ left: "50%", top: "50%", opacity: [1, 1, 0], scale: 0.7 }}
+            transition={{ duration: 0.6, ease: [0.3, 0, 0.7, 1] }}
+            className="absolute z-30 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+          >
+            <ChipStack amount={c.amount} size={15} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
       {/* seats — rotated so your own seat always renders at the bottom, facing you.
           Your own cards render large and face-up right at your seat (no separate
           duplicate panel — that used to collide with the seat's avatar/nameplate). */}
       {ordered.map((p, i) => {
         const revealed = room.revealed_hands?.find((r) => r.playerId === p.id)?.cards;
+        const hasRevealedHand = !!room.revealed_hands?.some((r) => r.playerId === p.id);
         const isYou = p.id === youId;
         const isThinking =
           room.current_turn_seat === p.seat && p.status === "active" && room.phase !== "showdown";
@@ -289,6 +338,7 @@ export function PokerTable({
             isDealer={room.dealer_seat === p.seat}
             holeCards={isYou ? holeCards : revealed}
             showCards={isYou || !!revealed}
+            hasRevealedHand={hasRevealedHand}
             turnExpiresAt={room.turn_expires_at}
             turnSeconds={room.turn_seconds}
             style={seatStyles[rel]}
