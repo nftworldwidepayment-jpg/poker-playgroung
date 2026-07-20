@@ -1,5 +1,5 @@
 "use client";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PlayerRow } from "@/lib/types";
 import { PlayingCard } from "./PlayingCard";
@@ -63,6 +63,23 @@ function TurnRing({ turnExpiresAt, turnSeconds }: { turnExpiresAt: string | null
   );
 }
 
+// Briefly tints the stack number green (won chips) or red (paid/lost chips)
+// right when it changes, fading back to the normal gold — a stack going up
+// or down was otherwise only visible via CountUp's digits ticking, easy to
+// miss in the corner of your eye during a fast-moving hand.
+function useStackFlash(chips: number): "up" | "down" | null {
+  const [flash, setFlash] = useState<"up" | "down" | null>(null);
+  const prevRef = useRef(chips);
+  useEffect(() => {
+    if (chips === prevRef.current) return;
+    setFlash(chips > prevRef.current ? "up" : "down");
+    prevRef.current = chips;
+    const t = setTimeout(() => setFlash(null), 900);
+    return () => clearTimeout(t);
+  }, [chips]);
+  return flash;
+}
+
 function SeatImpl({
   player,
   isYou,
@@ -120,9 +137,17 @@ function SeatImpl({
   const avatarUrl = avatarSrc(player.avatar_key);
   const folded = player.status === "folded";
   const allIn = player.status === "all_in";
+  // a busted player (0 chips) also lands on "sitting_out" status server-side
+  // (see startHand in engine.ts) — previously the sittingOut check here required
+  // chips > 0, so a busted seat fell through neither branch: full-brightness
+  // avatar, no "out" badge, and two face-down placeholder cards sitting there
+  // forever, indistinguishable from someone still live in the hand.
+  const bustedOut = player.status === "sitting_out" && player.chips <= 0;
   const sittingOut = player.status === "sitting_out" && player.chips > 0;
+  const isOut = sittingOut || bustedOut;
   const color = AVATAR_COLORS[player.seat % AVATAR_COLORS.length];
   const cardCount = holeCards?.length || 2;
+  const stackFlash = useStackFlash(player.chips);
 
   return (
     <div className="absolute -translate-x-1/2 -translate-y-1/2" style={style}>
@@ -176,7 +201,7 @@ function SeatImpl({
       {/* items-start (not stretch) + no fixed height: the card's own aspect-[5/7] must
           win, or flex cross-axis stretch squashes it into whatever height happens to be here */}
       <AnimatePresence>
-        {!sittingOut && (!folded || hasRevealedHand) && (
+        {!isOut && (!folded || hasRevealedHand) && (
           <motion.div
             exit={{ opacity: 0, y: 30, rotate: isYou ? 0 : 8, transition: { duration: 0.4, ease: [0.4, 0, 1, 1] } }}
             className="flex gap-1.5 mb-1.5 items-start"
@@ -203,9 +228,9 @@ function SeatImpl({
       <div
         className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden ${
           avatarUrl ? "bg-slate-800" : `bg-gradient-to-br ${color}`
-        } flex items-center justify-center text-white font-bold text-base sm:text-lg border-2 ${
+        } flex items-center justify-center text-white font-bold text-base sm:text-lg border-2 transition-colors duration-300 ${
           isTurn ? "border-amber-300 turn-glow" : isYou ? "border-white/70" : "border-white/20"
-        } ${folded ? "opacity-40 grayscale" : ""} ${sittingOut ? "opacity-60 sitting-out-sepia" : ""} ${
+        } ${folded ? "opacity-40 grayscale" : ""} ${isOut ? "opacity-60 sitting-out-sepia" : ""} ${
           isWinner ? "win-glow" : ""
         } ${isYou && isTurn ? "thinking-breathe" : ""} ${
           isChipLeader ? "chip-leader-ring" : ""
@@ -293,7 +318,11 @@ function SeatImpl({
           )}
           {player.name} {isYou && "(tu)"}
         </div>
-        <div className="text-[11px] text-amber-300 font-mono tabular-nums">
+        <div
+          className={`text-[11px] font-mono tabular-nums transition-colors duration-300 ${
+            stackFlash === "up" ? "text-emerald-400" : stackFlash === "down" ? "text-rose-400" : "text-amber-300"
+          }`}
+        >
           {settings.bbDisplay ? (
             <>{(player.chips / bigBlind).toFixed(1)} BB</>
           ) : (
@@ -321,6 +350,12 @@ function SeatImpl({
       {sittingOut && (
         <div className="absolute top-9 text-[10px] font-bold text-slate-300 bg-black/70 px-2 py-0.5 rounded border border-slate-500/30">
           DE FORA
+        </div>
+      )}
+
+      {bustedOut && (
+        <div className="absolute top-9 text-[10px] font-bold text-slate-400 bg-black/70 px-2 py-0.5 rounded border border-slate-600/30">
+          ELIMINADO
         </div>
       )}
 
