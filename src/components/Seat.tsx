@@ -190,7 +190,9 @@ function SeatImpl({
       )}
 
       <div
-        className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-base sm:text-lg border-2 ${
+        className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden ${
+          avatarUrl ? "bg-slate-800" : `bg-gradient-to-br ${color}`
+        } flex items-center justify-center text-white font-bold text-base sm:text-lg border-2 ${
           isTurn ? "border-amber-300 turn-glow" : isYou ? "border-cyan-300/80" : "border-white/20"
         } ${folded ? "opacity-40 grayscale" : ""} ${sittingOut ? "opacity-60 sitting-out-sepia" : ""} ${
           isWinner ? "win-glow" : ""
@@ -212,7 +214,19 @@ function SeatImpl({
           </span>
         )}
         {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="w-full h-full object-cover rounded-full select-none" draggable={false} />
+          // the avatar art is a 300x200 canvas with a narrower circular portrait
+          // centered in it (transparent padding left/right) — plain object-cover
+          // crops width to fit a square, but not quite enough to clear that
+          // transparent margin, leaving a sliver where this div's own colorful
+          // per-seat background gradient peeks through as a stray "ring" around
+          // the photo. Scaling the image up crops further in past the margin.
+          <img
+            src={avatarUrl}
+            alt=""
+            className="w-full h-full object-cover select-none"
+            style={{ transform: "scale(1.5)" }}
+            draggable={false}
+          />
         ) : (
           player.name.slice(0, 2).toUpperCase()
         )}
