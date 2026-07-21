@@ -8,7 +8,20 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { CreateTableModal, loadCreatePrefs } from "@/components/CreateTableModal";
 import { JoinRoomModal } from "@/components/JoinRoomModal";
 import { useSettings } from "@/lib/settings";
-import { IconBot, IconFlame, IconGift, IconLeaf, IconSettings, IconSmartphone, IconSwords, IconZap } from "@/components/icons";
+import {
+  IconBot,
+  IconCards,
+  IconCrown,
+  IconDice,
+  IconEye,
+  IconFlame,
+  IconGift,
+  IconLeaf,
+  IconSettings,
+  IconSmartphone,
+  IconSwords,
+  IconZap,
+} from "@/components/icons";
 
 const NAME_KEY = "poker-player-name";
 
@@ -50,6 +63,60 @@ function FloatingSuits({ reduced }: { reduced: boolean }) {
           {it.s}
         </motion.div>
       ))}
+    </div>
+  );
+}
+
+// Faixa de destaques a rodar sozinha — a mesma ideia dos banners de promoções
+// de um club de poker (GG Club, etc.), mas em vez de anunciar bónus,
+// mostra funcionalidades reais desta mesa que muitos jogadores nem sabem
+// que existem (Rabbit Hunt, Run It Twice, ...). Substitui um "hero" vazio
+// por algo que já é um pouco de onboarding.
+const FEATURES = [
+  { Icon: IconEye, title: "Rabbit Hunt", desc: "Revela as cartas que não saíram, depois de a mão acabar" },
+  { Icon: IconDice, title: "Run It Twice", desc: "Corre o board duas vezes num all-in — menos sorte, mais skill" },
+  { Icon: IconCards, title: "PLO4", desc: "Omaha de 4 cartas — mais combinações, mais ação em cada mão" },
+  { Icon: IconCrown, title: "Baralho 4 Cores", desc: "Distingue naipes num relance, sem confundir ♣ com ♠" },
+] as const;
+
+function FeatureBanner({ reduced }: { reduced: boolean }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (reduced) return;
+    const id = setInterval(() => setI((v) => (v + 1) % FEATURES.length), 4200);
+    return () => clearInterval(id);
+  }, [reduced]);
+  const f = FEATURES[i];
+  return (
+    <div className="relative mb-4 h-[52px] rounded-2xl bg-white/[0.04] border border-white/10 overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, x: reduced ? 0 : 14 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: reduced ? 0 : -14 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute inset-0 flex items-center gap-3 px-4"
+        >
+          <span className="shrink-0 w-8 h-8 rounded-full bg-[var(--gold)]/12 border border-[var(--gold)]/30 text-[var(--gold-bright)] flex items-center justify-center">
+            <f.Icon size={16} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[12.5px] font-semibold text-[var(--text-warm)]">{f.title}</span>
+            <span className="block text-[11px] text-white/40 truncate">{f.desc}</span>
+          </span>
+        </motion.div>
+      </AnimatePresence>
+      <div className="absolute bottom-1.5 right-3 flex items-center gap-1">
+        {FEATURES.map((_, d) => (
+          <span
+            key={d}
+            className={`h-1 rounded-full transition-all duration-300 ${
+              d === i ? "w-3 bg-[var(--gold)]" : "w-1 bg-white/15"
+            }`}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -212,6 +279,8 @@ export default function Home() {
           </p>
         </div>
 
+        <FeatureBanner reduced={settings.reducedMotion} />
+
         {lastSession && (
           <motion.button
             initial={{ opacity: 0, y: -8 }}
@@ -362,9 +431,9 @@ export default function Home() {
                 <div className="flex flex-col gap-2">
                   {(
                     [
-                      { id: "easy", label: "Fácil", desc: "Chama muito, quase nunca sobe — ideal para aprender", Icon: IconLeaf },
-                      { id: "medium", label: "Médio", desc: "Joga sólido: respeita pot odds, blefa às vezes", Icon: IconSwords },
-                      { id: "hard", label: "Difícil", desc: "Estilo profissional: agressivo, blefa, joga por posição", Icon: IconFlame },
+                      { id: "easy", label: "Fácil", desc: "Chama muito, quase nunca sobe — ideal para aprender", Icon: IconLeaf, tier: 1 },
+                      { id: "medium", label: "Médio", desc: "Joga sólido: respeita pot odds, blefa às vezes", Icon: IconSwords, tier: 2 },
+                      { id: "hard", label: "Difícil", desc: "Estilo profissional: agressivo, blefa, joga por posição", Icon: IconFlame, tier: 3 },
                     ] as const
                   ).map((d) => (
                     <motion.button
@@ -376,8 +445,20 @@ export default function Home() {
                     >
                       <d.Icon size={22} className="shrink-0 text-white/70" />
                       <span className="flex-1 min-w-0">
-                        <span className="block text-sm font-semibold text-white/85 group-hover:text-white">
-                          {d.label}
+                        <span className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white/85 group-hover:text-white">
+                            {d.label}
+                          </span>
+                          <span className="flex items-center gap-0.5" aria-hidden>
+                            {[1, 2, 3].map((n) => (
+                              <span
+                                key={n}
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  n <= d.tier ? "bg-[var(--gold)]" : "bg-white/15"
+                                }`}
+                              />
+                            ))}
+                          </span>
                         </span>
                         <span className="block text-[11px] text-white/40 truncate">{d.desc}</span>
                       </span>
