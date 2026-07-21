@@ -234,8 +234,11 @@ export default function RoomPage() {
   useEffect(() => {
     if (room?.phase === "showdown" && (room.winners?.length || 0) > 0) {
       const cardsStillFlipping = Math.max(0, room.community_cards.length - lastBoardLenBeforeShowdown.current);
-      const boardDelay = 500 + cardsStillFlipping * 650 + 300;
-      const slowRollMs = settings.reducedMotion ? 0 : 950;
+      // fold-win: não há cartas para virar nem mãos para revelar, por isso o
+      // "slow roll" dramático era só tempo morto — mostra o resultado já
+      const foldWin = !room.revealed_hands?.length && cardsStillFlipping === 0;
+      const boardDelay = foldWin ? 250 : 500 + cardsStillFlipping * 650 + 300;
+      const slowRollMs = settings.reducedMotion || foldWin ? 0 : 950;
       const t1 = setTimeout(() => setRevealing(!settings.reducedMotion), boardDelay);
       const t2 = setTimeout(() => {
         setRevealing(false);
@@ -284,6 +287,26 @@ export default function RoomPage() {
       return changed ? next : prev;
     });
   }, [players]);
+
+  // A mão seguinte arranca sozinha uns segundos depois do overlay do vencedor
+  // aparecer — o clique manual em "Próxima mão" era o maior tempo morto do
+  // jogo inteiro (a mesa parava até o anfitrião reparar). O botão continua lá
+  // para quem quiser avançar mais depressa. Só o cliente do anfitrião dispara,
+  // e no máximo uma vez por mão (guardado por hand_number).
+  const autoStartedHand = useRef(0);
+  useEffect(() => {
+    if (!showWinner || !isHost || !room || !session) return;
+    if (room.phase !== "showdown" || room.status !== "playing") return;
+    if (autoStartedHand.current === room.hand_number) return;
+    const alive = players.filter((p) => p.status !== "left" && p.chips > 0 && !p.wants_sit_out);
+    if (alive.length < 2) return;
+    const t = setTimeout(() => {
+      autoStartedHand.current = room.hand_number;
+      api.startHand(code, session.playerId, session.token).catch(() => {});
+    }, 4500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showWinner, isHost, room?.phase, room?.status, room?.hand_number]);
 
   // torneio: avisa-te do teu lugar no momento em que rebentas (o pódio completo
   // só aparece quando o torneio inteiro acaba, o que pode demorar muito mais)

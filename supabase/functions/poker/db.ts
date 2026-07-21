@@ -171,16 +171,23 @@ export async function saveCtx(ctx: GameCtx) {
 }
 
 export async function verifyPlayer(roomId: string, playerId: string, token: string) {
-  if (!playerId || !token) return false;
+  const verifiedRoomId = await verifyToken(playerId, token);
+  return verifiedRoomId === roomId;
+}
+
+// Variante para os ops quentes (action/start): devolve o room_id do jogador se
+// o token bater certo, para poder correr EM PARALELO com o loadCtx (que é quem
+// sabe o room_id real) em vez de à frente dele — e as suas duas queries também
+// correm em paralelo entre si. Poupa 2 round-trips sequenciais em cada jogada.
+export async function verifyToken(playerId: string, token: string): Promise<string | null> {
+  if (!playerId || !token) return null;
   const db = admin();
-  const { data } = await db
-    .from("player_secrets")
-    .select("player_id, token")
-    .eq("player_id", playerId)
-    .single();
-  if (!data || data.token !== token) return false;
-  const { data: player } = await db.from("players").select("id, room_id").eq("id", playerId).single();
-  return !!player && player.room_id === roomId;
+  const [{ data: secret }, { data: player }] = await Promise.all([
+    db.from("player_secrets").select("token").eq("player_id", playerId).single(),
+    db.from("players").select("room_id").eq("id", playerId).single(),
+  ]);
+  if (!secret || secret.token !== token) return null;
+  return player?.room_id ?? null;
 }
 
 export function genCode(): string {

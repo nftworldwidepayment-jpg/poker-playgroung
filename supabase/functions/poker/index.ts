@@ -1,4 +1,4 @@
-import { admin, checkRoomPassword, genCode, genToken, loadCtx, saveCtx, setRoomPassword, verifyPlayer } from "./db.ts";
+import { admin, checkRoomPassword, genCode, genToken, loadCtx, saveCtx, setRoomPassword, verifyPlayer, verifyToken } from "./db.ts";
 import { applyAction, applyTimeout, canStartHand, showHand, startHand } from "./engine.ts";
 import { decideBotAction } from "./bot.ts";
 
@@ -289,10 +289,9 @@ Deno.serve(async (req) => {
       case "start": {
         const code = String(body.code || "").trim().toUpperCase();
         const { playerId, token } = body as { playerId: string; token: string };
-        const ctx = await loadCtx(code);
+        const [ctx, verifiedRoomId] = await Promise.all([loadCtx(code), verifyToken(playerId, token)]);
         if (!ctx) return json({ error: "Sala não encontrada" }, 404);
-        const ok = await verifyPlayer(ctx.room.id, playerId, token);
-        if (!ok) return json({ error: "Não autorizado" }, 401);
+        if (verifiedRoomId !== ctx.room.id) return json({ error: "Não autorizado" }, 401);
         const requester = ctx.players.find((p) => p.id === playerId);
         if (!requester?.is_host) return json({ error: "Só o anfitrião pode iniciar" }, 403);
         if (!canStartHand(ctx.players)) {
@@ -318,10 +317,10 @@ Deno.serve(async (req) => {
         if (!["fold", "check", "call", "raise", "all_in"].includes(action)) {
           return json({ error: "Ação inválida" }, 400);
         }
-        const ctx = await loadCtx(code);
+        // auth em paralelo com o load do jogo — o op mais quente de todos
+        const [ctx, verifiedRoomId] = await Promise.all([loadCtx(code), verifyToken(playerId, token)]);
         if (!ctx) return json({ error: "Sala não encontrada" }, 404);
-        const ok = await verifyPlayer(ctx.room.id, playerId, token);
-        if (!ok) return json({ error: "Não autorizado" }, 401);
+        if (verifiedRoomId !== ctx.room.id) return json({ error: "Não autorizado" }, 401);
         if (ctx.room.status === "paused") return json({ error: "A mesa está em pausa" }, 400);
         const actor = ctx.players.find((p) => p.id === playerId);
         // Simple anti-spam guard: reject a second action from the same player within
