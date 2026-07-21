@@ -26,6 +26,8 @@ interface Prefs {
   runItTwice: boolean;
   rabbitHunt: boolean;
   isPrivate: boolean;
+  tourneyMode: boolean;
+  levelMinutes: number;
 }
 
 const DEFAULT_PREFS: Prefs = {
@@ -42,6 +44,8 @@ const DEFAULT_PREFS: Prefs = {
   runItTwice: false,
   rabbitHunt: true,
   isPrivate: false,
+  tourneyMode: false,
+  levelMinutes: 10,
 };
 
 export function loadCreatePrefs(): Prefs {
@@ -279,6 +283,8 @@ export function CreateTableModal({
         allowStraddle: prefs.allowStraddle,
         joinPassword: prefs.isPrivate ? password.trim() : undefined,
         avatarKey: avatarKey || undefined,
+        tourneyMode: prefs.tourneyMode,
+        levelMinutes: prefs.levelMinutes,
       });
       setSuccess(true);
     } catch (e) {
@@ -485,24 +491,51 @@ export function CreateTableModal({
                   </div>
                   <div className="flex gap-2">
                     {[
-                      { label: "Cash", enabled: true },
-                      { label: "Sit & Go", enabled: false },
-                      { label: "Torneio", enabled: false },
+                      { key: false, label: "Cash", desc: "blinds fixas" },
+                      { key: true, label: "Torneio", desc: "blinds sobem, último com fichas ganha" },
                     ].map((f) => (
-                      <div
+                      <button
                         key={f.label}
-                        title={f.enabled ? undefined : "Em breve"}
-                        className={`flex-1 text-center text-[11px] font-semibold rounded-lg py-1.5 border ${
-                          f.enabled
+                        type="button"
+                        onClick={() => {
+                          playYourAction();
+                          patch({ tourneyMode: f.key });
+                        }}
+                        className={`flex-1 text-center text-[11px] font-semibold rounded-lg py-1.5 border transition ${
+                          prefs.tourneyMode === f.key
                             ? "border-[var(--gold)]/40 bg-[var(--gold)]/[0.06] text-[var(--gold-bright)]"
-                            : "border-white/5 text-white/20 cursor-not-allowed"
+                            : "border-white/10 bg-black/20 text-white/40 hover:text-white/70 hover:border-white/20"
                         }`}
                       >
                         {f.label}
-                        {!f.enabled && <span className="block text-[8px] normal-case">em breve</span>}
-                      </div>
+                        <span className="block text-[8px] font-normal normal-case opacity-70">{f.desc}</span>
+                      </button>
                     ))}
                   </div>
+                  {prefs.tourneyMode && (
+                    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-2.5">
+                      <div className="text-[10px] text-white/40 mb-1.5">Subida de blinds a cada</div>
+                      <div className="flex gap-1.5">
+                        {[5, 8, 10, 15, 20].map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => {
+                              playYourAction();
+                              patch({ levelMinutes: m });
+                            }}
+                            className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold border transition ${
+                              prefs.levelMinutes === m
+                                ? "bg-[var(--gold)] text-slate-900 border-[var(--gold-bright)]"
+                                : "bg-black/20 hover:bg-black/30 text-white/60 border-white/10"
+                            }`}
+                          >
+                            {m} min
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
                 </motion.div>
 
                 {/* STAKES */}

@@ -64,6 +64,8 @@ Deno.serve(async (req) => {
         const joinPassword = String(body.joinPassword || "").trim().slice(0, 30) || null;
         const tableName = String(body.tableName || "").trim().slice(0, 30) || null;
         const avatarKey = String(body.avatarKey || "").trim().slice(0, 40) || randomAvatarKey();
+        const tourneyEnabled = !!body.tourneyMode;
+        const levelMinutes = [5, 8, 10, 15, 20].includes(Number(body.levelMinutes)) ? Number(body.levelMinutes) : 10;
 
         const db = admin();
         let code = genCode();
@@ -89,6 +91,9 @@ Deno.serve(async (req) => {
             allow_straddle: allowStraddle,
             is_private: !!joinPassword,
             table_name: tableName,
+            buy_in: buyIn,
+            tourney_enabled: tourneyEnabled,
+            level_minutes: levelMinutes,
           })
           .select()
           .single();
@@ -135,9 +140,11 @@ Deno.serve(async (req) => {
         let seat = 0;
         while (usedSeats.has(seat)) seat++;
 
+        // buy_in da sala em vez de 1000 fixo — antes disto, quem entrava numa
+        // mesa criada com buy-in diferente recebia um stack desigual ao do host
         const { data: player, error } = await db
           .from("players")
-          .insert({ room_id: room.id, seat, name, chips: 1000, is_host: false, avatar_key: avatarKey })
+          .insert({ room_id: room.id, seat, name, chips: room.buy_in || 1000, is_host: false, avatar_key: avatarKey })
           .select()
           .single();
         if (error || !player) return json({ error: "Falha ao entrar" }, 500);
@@ -195,7 +202,7 @@ Deno.serve(async (req) => {
             room_id: room.id,
             seat,
             name,
-            chips: 1000,
+            chips: room.buy_in || 1000,
             is_host: false,
             avatar_key: randomAvatarKey(),
             is_bot: true,

@@ -50,6 +50,8 @@ export interface CreateRoomOptions {
   allowStraddle?: boolean;
   joinPassword?: string;
   avatarKey?: string;
+  tourneyMode?: boolean;
+  levelMinutes?: number;
 }
 
 export const api = {

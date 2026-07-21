@@ -52,6 +52,14 @@ export interface RoomRow {
   is_private: boolean;
   table_name: string | null;
   paused_at: string | null;
+  buy_in: number;
+  tourney_enabled: boolean;
+  tourney_started_at: string | null;
+  level_minutes: number;
+  blind_level: number;
+  base_small_blind: number | null;
+  base_big_blind: number | null;
+  finish_order: { playerId: string; name: string; place: number }[] | null;
 }
 
 export interface PlayerRow {

@@ -7,6 +7,7 @@ import { useRoom } from "@/lib/useRoom";
 import { PokerTable } from "@/components/PokerTable";
 import { ActionBar } from "@/components/ActionBar";
 import { WinnerOverlay } from "@/components/WinnerOverlay";
+import { TourneyPodium, TourneyStatus } from "@/components/Tourney";
 import { ToastStack, ToastItem } from "@/components/Toast";
 import { SettingsModal } from "@/components/SettingsModal";
 import { PlayerNoteEditor } from "@/components/PlayerNoteEditor";
@@ -280,6 +281,19 @@ export default function RoomPage() {
       return changed ? next : prev;
     });
   }, [players]);
+
+  // torneio: avisa-te do teu lugar no momento em que rebentas (o pódio completo
+  // só aparece quando o torneio inteiro acaba, o que pode demorar muito mais)
+  const notifiedPlace = useRef(false);
+  useEffect(() => {
+    if (!room?.tourney_enabled || !you || notifiedPlace.current) return;
+    if (room.status === "finished") return; // o pódio já conta a história toda
+    const mine = room.finish_order?.find((f) => f.playerId === you.id);
+    if (mine && mine.place > 1) {
+      notifiedPlace.current = true;
+      pushToast(`Ficaste em ${mine.place}º lugar no torneio`, "info");
+    }
+  }, [room?.finish_order, room?.status, room?.tourney_enabled, you?.id]);
 
   // track the single biggest pot won this session, for the stats panel
   useEffect(() => {
@@ -597,6 +611,7 @@ export default function RoomPage() {
           <span className="hidden sm:inline-block text-[10px] uppercase tracking-widest text-amber-300/60 font-serif border border-amber-400/20 rounded-full px-2 py-1">
             {room.game_type === "plo4" ? "PLO4" : "Hold'em"}
           </span>
+          <TourneyStatus room={room} />
           {room.ante > 0 && (
             <span className="hidden sm:inline-block text-[10px] uppercase tracking-widest text-white/40 font-mono border border-white/10 rounded-full px-2 py-1">
               Ante {room.ante}
@@ -920,15 +935,23 @@ export default function RoomPage() {
         )}
       </AnimatePresence>
 
-      {room.phase === "showdown" && showWinner && (
-        <WinnerOverlay
-          room={room}
-          isHost={isHost}
-          onNext={handleStart}
-          busy={busy}
-          canShowHand={!!you && holeCards.length > 0 && !room.revealed_hands?.some((r) => r.playerId === you.id)}
-          onShowHand={handleShowHand}
-        />
+      {/* torneio terminado: o pódio substitui o overlay de fim de mão — o
+          momento é "acabou o torneio", não "mais uma mão"; sem botão de
+          próxima mão porque não há próxima mão */}
+      {room.tourney_enabled && room.status === "finished" && showWinner && (room.finish_order?.length || 0) > 0 ? (
+        <TourneyPodium room={room} youId={session?.playerId ?? null} />
+      ) : (
+        room.phase === "showdown" &&
+        showWinner && (
+          <WinnerOverlay
+            room={room}
+            isHost={isHost}
+            onNext={handleStart}
+            busy={busy}
+            canShowHand={!!you && holeCards.length > 0 && !room.revealed_hands?.some((r) => r.playerId === you.id)}
+            onShowHand={handleShowHand}
+          />
+        )
       )}
 
       {yourTurn && you && room.phase !== "showdown" && room.status !== "paused" && (

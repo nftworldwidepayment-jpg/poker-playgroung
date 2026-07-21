@@ -35,6 +35,63 @@ export function canStartHand(players: PlayerRow[]): boolean {
   return players.filter((p) => p.status !== "left" && p.chips > 0 && !p.wants_sit_out).length >= 2;
 }
 
+// Estrutura de blinds do torneio: multiplicadores sobre a blind inicial da mesa.
+// Progressão de home game clássica (sobe ~50-100% por nível, acelera no fim) —
+// com 10/20 inicial dá 10/20, 15/30, 20/40, 30/60, 40/80, 60/120, 80/160...
+// O último nível repete-se indefinidamente para garantir que o torneio acaba.
+export const TOURNEY_BLIND_MULTIPLIERS = [1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128];
+
+export function tourneyLevelBlinds(baseSb: number, level: number): { sb: number; bb: number } {
+  const mult = TOURNEY_BLIND_MULTIPLIERS[Math.min(level, TOURNEY_BLIND_MULTIPLIERS.length - 1)];
+  const sb = Math.max(1, Math.round(baseSb * mult));
+  return { sb, bb: sb * 2 };
+}
+
+// O nível é derivado do tempo decorrido desde o arranque do torneio — nada de
+// estado incremental que possa dessincronizar. As blinds só mudam de facto na
+// próxima mão (regra padrão de home game: "sobem quando o dealer der as cartas").
+function applyTourneyLevel(room: RoomRow) {
+  if (!room.tourney_enabled) return;
+  if (!room.tourney_started_at) room.tourney_started_at = new Date().toISOString();
+  const baseSb = room.base_small_blind ?? room.small_blind;
+  if (room.base_small_blind == null) {
+    room.base_small_blind = room.small_blind;
+    room.base_big_blind = room.big_blind;
+  }
+  const elapsedMs = Date.now() - new Date(room.tourney_started_at).getTime();
+  const levelMinutes = room.level_minutes > 0 ? room.level_minutes : 10;
+  const level = Math.max(0, Math.floor(elapsedMs / (levelMinutes * 60_000)));
+  const { sb, bb } = tourneyLevelBlinds(baseSb, level);
+  room.blind_level = level;
+  room.small_blind = sb;
+  room.big_blind = bb;
+}
+
+// Regista quem rebentou nesta mão e fecha o torneio quando sobra um jogador.
+// Desempate de lugares quando dois rebentam na mesma mão: quem tinha o stack
+// maior no início da mão (== total_bet_hand, já que perderam tudo) fica com o
+// lugar melhor — a regra padrão de torneios.
+function recordEliminations(ctx: GameCtx) {
+  const { room, players } = ctx;
+  if (!room.tourney_enabled) return;
+  const finished = room.finish_order ? [...room.finish_order] : [];
+  const finishedIds = new Set(finished.map((f) => f.playerId));
+  const inGame = players.filter((p) => p.status !== "left" && !finishedIds.has(p.id));
+  const busted = inGame
+    .filter((p) => p.chips === 0)
+    .sort((a, b) => a.total_bet_hand - b.total_bet_hand);
+  const remaining = inGame.length - busted.length;
+  busted.forEach((p, i) => {
+    finished.push({ playerId: p.id, name: p.name, place: remaining + busted.length - i });
+  });
+  if (busted.length > 0) room.finish_order = finished;
+  if (remaining === 1) {
+    const winner = inGame.find((p) => p.chips > 0)!;
+    room.finish_order = [{ playerId: winner.id, name: winner.name, place: 1 }, ...finished];
+    room.status = "finished";
+  }
+}
+
 export function startHand(ctx: GameCtx) {
   const { room, players } = ctx;
 
@@ -50,6 +107,9 @@ export function startHand(ctx: GameCtx) {
 
   const eligible = players.filter((p) => p.status !== "left" && p.chips > 0 && !p.wants_sit_out);
   if (eligible.length < 2) throw new Error("Não há jogadores suficientes");
+  if (room.tourney_enabled && room.status === "finished") throw new Error("O torneio já terminou");
+
+  applyTourneyLevel(room);
 
   for (const p of players) {
     if (p.status === "left") continue;
@@ -289,6 +349,7 @@ function finishShowdown(ctx: GameCtx, inHand: PlayerRow[]) {
   room.phase = "showdown";
   room.current_turn_seat = null;
   room.turn_expires_at = null;
+  recordEliminations(ctx);
 }
 
 function showdown(ctx: GameCtx) {
@@ -435,6 +496,7 @@ function awardFoldWin(ctx: GameCtx, winner: PlayerRow) {
   room.phase = "showdown";
   room.current_turn_seat = null;
   room.turn_expires_at = null;
+  recordEliminations(ctx);
 }
 
 export function advanceStreet(ctx: GameCtx) {

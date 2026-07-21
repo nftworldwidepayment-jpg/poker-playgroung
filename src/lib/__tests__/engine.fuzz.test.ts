@@ -21,6 +21,8 @@ function mkRoom(o: Partial<RoomRow> = {}): RoomRow {
     run_it_twice_enabled: false, run_it_twice_boards: null, last_hand: null, all_in_equity: null,
     ante: 0, turn_seconds: 30, allow_straddle: true, is_private: false, paused_at: null,
     table_name: null,
+    buy_in: 1000, tourney_enabled: false, tourney_started_at: null, level_minutes: 10,
+    blind_level: 0, base_small_blind: null, base_big_blind: null, finish_order: null,
     ...o,
   };
 }
@@ -303,9 +305,89 @@ function testRabbitHuntToggle(): boolean {
   return true;
 }
 
+// Tournament: play random hands to completion and check that (a) chips stay
+// conserved, (b) every player ends up in finish_order exactly once with places
+// 1..N, and (c) the room closes as "finished" with exactly one chip-holder.
+function testTournament(): boolean {
+  const N = 4;
+  const players: PlayerRow[] = [];
+  for (let i = 0; i < N; i++) players.push(mkPlayer(i, 1000));
+  // level_minutes: 0 is normalized to 10 by the engine, so use a tiny base
+  // stack + fast ladder instead: with 25/50 base blinds a 1000 stack busts fast
+  const room = mkRoom({ tourney_enabled: true, small_blind: 25, big_blind: 50, level_minutes: 10 });
+  const ctx = { room, players, holeCards: {} as Record<string, Card[]> };
+  const before = totalChips(players);
+
+  let guardHands = 0;
+  while (room.status !== "finished" && guardHands < 400) {
+    guardHands++;
+    if (!canStartHand(players)) break;
+    try {
+      startHand(ctx);
+    } catch (e) {
+      console.log("[tourney-4p] startHand threw:", (e as Error).message);
+      return false;
+    }
+    let guard = 0;
+    while (room.phase !== "showdown" && guard < 60) {
+      guard++;
+      const seat = room.current_turn_seat;
+      if (seat == null) break;
+      const p = players.find((pl) => pl.seat === seat);
+      if (!p) break;
+      const toCall = room.current_bet - p.current_bet;
+      const r = Math.random();
+      try {
+        if (r < 0.2) applyAction(ctx, p.id, "fold");
+        else if (r < 0.6) {
+          if (toCall <= 0) applyAction(ctx, p.id, "check");
+          else applyAction(ctx, p.id, "call");
+        } else applyAction(ctx, p.id, "all_in");
+      } catch {
+        try {
+          if (toCall <= 0) applyAction(ctx, p.id, "check");
+          else applyAction(ctx, p.id, "call");
+        } catch {
+          break;
+        }
+      }
+    }
+  }
+
+  if (room.status !== "finished") {
+    console.log(`[tourney-4p] !!! tournament never finished after ${guardHands} hands`);
+    return false;
+  }
+  if (totalChips(players) !== before) {
+    console.log(`[tourney-4p] !!! chip drift: before=${before} after=${totalChips(players)}`);
+    return false;
+  }
+  const order = room.finish_order || [];
+  const places = order.map((f) => f.place).sort((a, b) => a - b);
+  const expected = Array.from({ length: N }, (_, i) => i + 1);
+  if (JSON.stringify(places) !== JSON.stringify(expected)) {
+    console.log(`[tourney-4p] !!! finish_order places wrong: ${JSON.stringify(order)}`);
+    return false;
+  }
+  const ids = new Set(order.map((f) => f.playerId));
+  if (ids.size !== N) {
+    console.log(`[tourney-4p] !!! duplicate/missing players in finish_order: ${JSON.stringify(order)}`);
+    return false;
+  }
+  const withChips = players.filter((p) => p.chips > 0);
+  const champion = order.find((f) => f.place === 1)!;
+  if (withChips.length !== 1 || withChips[0].id !== champion.playerId) {
+    console.log(`[tourney-4p] !!! champion mismatch: chips=${JSON.stringify(withChips.map((p) => p.id))} place1=${champion.playerId}`);
+    return false;
+  }
+  console.log(`[tourney-4p] OK — finished in ${room.hand_number} hands, champion ${champion.name}, places 1..${N} all assigned`);
+  return true;
+}
+
 let allOk = true;
 allOk = testUncalledBetIsNotAWin() && allOk;
 allOk = testRabbitHuntToggle() && allOk;
+allOk = testTournament() && allOk;
 allOk = runFuzz(3, "nlhe", false, false, 500, "nlhe-3p") && allOk;
 allOk = runFuzz(4, "nlhe", false, true, 500, "nlhe-4p-straddle") && allOk;
 allOk = runFuzz(3, "plo4", false, false, 500, "plo4-3p") && allOk;

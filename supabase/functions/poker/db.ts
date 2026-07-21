@@ -61,6 +61,15 @@ export async function saveCtx(ctx: GameCtx) {
       run_it_twice_boards: room.run_it_twice_boards,
       last_hand: room.last_hand,
       all_in_equity: room.all_in_equity,
+      // torneio: as blinds sobem por nível, por isso small/big blind deixam de
+      // ser imutáveis pós-create e têm de ser persistidas a cada mão
+      small_blind: room.small_blind,
+      big_blind: room.big_blind,
+      blind_level: room.blind_level,
+      tourney_started_at: room.tourney_started_at,
+      base_small_blind: room.base_small_blind,
+      base_big_blind: room.base_big_blind,
+      finish_order: room.finish_order,
     })
     .eq("id", room.id);
 
