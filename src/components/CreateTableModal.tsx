@@ -767,15 +767,12 @@ export function CreateTableModal({
                     whileTap={{ scale: formValid ? 0.97 : 1 }}
                     disabled={submitting}
                     onClick={handleSubmit}
-                    className={`relative w-full py-3.5 rounded-xl font-bold overflow-hidden transition ${
+                    className={`relative w-full py-3.5 rounded-xl font-bold transition-colors ${
                       formValid
-                        ? "bg-gradient-to-r from-[var(--gold-bright)] via-[var(--gold)] to-[var(--gold-deep)] text-slate-900 shadow-[0_10px_30px_-8px_rgba(201,169,97,0.6)]"
+                        ? "bg-[var(--gold)] hover:bg-[var(--gold-bright)] text-slate-900 shadow-[0_10px_30px_-8px_rgba(201,169,97,0.6)]"
                         : "bg-white/5 text-white/30 cursor-not-allowed"
                     } disabled:opacity-70`}
                   >
-                    {formValid && !submitting && !settings.reducedMotion && (
-                      <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-                    )}
                     <span className="relative flex items-center justify-center gap-2">
                       {submitting ? (
                         <>

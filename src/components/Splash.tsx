@@ -72,7 +72,7 @@ export function Splash() {
               initial={{ opacity: 0, y: 14, letterSpacing: "0.4em" }}
               animate={{ opacity: 1, y: 0, letterSpacing: "0.02em" }}
               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
-              className="font-serif text-4xl sm:text-5xl font-black bg-gradient-to-b from-[var(--gold-bright)] via-[var(--gold)] to-[var(--gold-deep)] bg-clip-text text-transparent"
+              className="font-serif text-4xl sm:text-5xl font-black text-[var(--gold-bright)]"
             >
               Poker Night
             </motion.h1>
