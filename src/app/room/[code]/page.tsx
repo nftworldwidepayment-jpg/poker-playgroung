@@ -788,7 +788,7 @@ export default function RoomPage() {
         {room.status === "waiting" && (
           <div className="mt-6 flex flex-col items-center gap-2 text-center">
             <div className="text-white/60 text-sm">
-              {players.length} jogador{players.length === 1 ? "" : "es"} na sala — partilha o código{" "}
+              {players.length} jogador{players.length === 1 ? "" : "es"} na sala. Partilha o código{" "}
               <span className="font-mono text-amber-300">{code}</span>
             </div>
             <div className="flex items-center gap-3 text-xs">
@@ -885,7 +885,7 @@ export default function RoomPage() {
         return (
           <div className="fixed top-14 inset-x-0 z-20 flex justify-center px-4 pointer-events-none">
             <div className="bg-slate-800/90 border border-slate-500/30 text-slate-200 text-xs rounded-full px-3 py-1.5 backdrop-blur">
-              {actor!.name} está desligado — a jogada passa automaticamente quando o tempo acabar
+              {actor!.name} está desligado. A jogada passa automaticamente quando o tempo acabar
             </div>
           </div>
         );
@@ -942,7 +942,7 @@ export default function RoomPage() {
               onClick={handleTogglePause}
               className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-amber-200 text-xs font-semibold rounded-full px-4 py-1.5 backdrop-blur transition"
             >
-              ⏸ Mesa em pausa — clica para retomar
+              ⏸ Mesa em pausa. Clica para retomar
             </button>
           ) : (
             <div className="bg-amber-500/15 border border-amber-400/40 text-amber-200 text-xs font-semibold rounded-full px-4 py-1.5 backdrop-blur pointer-events-none">

@@ -312,7 +312,7 @@ function SeatImpl({
         <div className={`text-xs font-serif font-bold ${isYou ? "text-white" : "text-amber-50/90"} max-w-[100px] truncate flex items-center justify-center gap-1`}>
           {noteDotColor && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${noteDotColor}`} />}
           {player.is_bot && (
-            <span title={`Bot — ${player.bot_difficulty || "medium"}`} className="shrink-0">
+            <span title={`Bot (${player.bot_difficulty || "medium"})`} className="shrink-0">
               <IconBot size={12} />
             </span>
           )}

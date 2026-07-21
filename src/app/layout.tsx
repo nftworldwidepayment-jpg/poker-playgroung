@@ -21,7 +21,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Poker Night — mesa de poker com os amigos",
+  title: "Poker Night: mesa de poker com os amigos",
   description: "Mesa de Texas Hold'em online, em tempo real, para jogar com os teus amigos.",
   icons: { icon: "/icon-192.png", apple: "/icon-192.png" },
 };

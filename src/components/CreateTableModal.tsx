@@ -337,7 +337,7 @@ export function CreateTableModal({
               >
                 <IconCheck size={28} />
               </motion.div>
-              <div className="text-white/70 font-serif">Mesa criada — a entrar...</div>
+              <div className="text-white/70 font-serif">Mesa criada, a entrar...</div>
             </motion.div>
           ) : (
             <>

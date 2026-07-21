@@ -74,8 +74,8 @@ function FloatingSuits({ reduced }: { reduced: boolean }) {
 // por algo que já é um pouco de onboarding.
 const FEATURES = [
   { Icon: IconEye, title: "Rabbit Hunt", desc: "Revela as cartas que não saíram, depois de a mão acabar" },
-  { Icon: IconDice, title: "Run It Twice", desc: "Corre o board duas vezes num all-in — menos sorte, mais skill" },
-  { Icon: IconCards, title: "PLO4", desc: "Omaha de 4 cartas — mais combinações, mais ação em cada mão" },
+  { Icon: IconDice, title: "Run It Twice", desc: "Corre o board duas vezes num all-in, para reduzir a variância" },
+  { Icon: IconCards, title: "PLO4", desc: "Omaha de 4 cartas, com mais combinações e mais ação em cada mão" },
   { Icon: IconCrown, title: "Baralho 4 Cores", desc: "Distingue naipes num relance, sem confundir ♣ com ♠" },
 ] as const;
 
@@ -275,7 +275,7 @@ export default function Home() {
           </h1>
           <div className="mx-auto mt-3 h-px w-16 bg-gradient-to-r from-transparent via-[var(--gold)]/50 to-transparent" />
           <p className="text-white/45 text-sm mt-3 font-serif italic">
-            Texas Hold&apos;em &amp; PLO4 — com amigos, ou sozinho contra o computador.
+            Texas Hold&apos;em &amp; PLO4, com amigos ou sozinho contra o computador.
           </p>
         </div>
 
@@ -371,7 +371,7 @@ export default function Home() {
                       "A criar..."
                     ) : (
                       <span className="inline-flex items-center gap-1">
-                        <IconZap size={12} /> Rápido — usar últimas definições
+                        <IconZap size={12} /> Rápido: usar últimas definições
                       </span>
                     )}
                   </button>
@@ -416,7 +416,7 @@ export default function Home() {
                 className="flex flex-col gap-3 p-5 sm:p-6 pt-3"
               >
                 <p className="text-center text-white/40 text-xs -mt-1 mb-1">
-                  Treina sozinho contra um oponente artificial — escolhe a dificuldade.
+                  Treina sozinho contra um oponente artificial. Escolhe a dificuldade.
                 </p>
 
                 <input
@@ -431,7 +431,7 @@ export default function Home() {
                 <div className="flex flex-col gap-2">
                   {(
                     [
-                      { id: "easy", label: "Fácil", desc: "Chama muito, quase nunca sobe — ideal para aprender", Icon: IconLeaf, tier: 1 },
+                      { id: "easy", label: "Fácil", desc: "Chama muito, quase nunca sobe, ideal para aprender", Icon: IconLeaf, tier: 1 },
                       { id: "medium", label: "Médio", desc: "Joga sólido: respeita pot odds, blefa às vezes", Icon: IconSwords, tier: 2 },
                       { id: "hard", label: "Difícil", desc: "Estilo profissional: agressivo, blefa, joga por posição", Icon: IconFlame, tier: 3 },
                     ] as const

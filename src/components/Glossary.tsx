@@ -6,14 +6,14 @@ const TERMS: { term: string; def: string }[] = [
   { term: "Blind (SB/BB)", def: "Apostas obrigatórias postadas antes de ver as cartas, para forçar ação." },
   { term: "Straddle", def: "Aposta voluntária extra antes das cartas, o dobro da big blind, que sobe o preço de entrada." },
   { term: "Ante", def: "Pequena entrada que todos pagam em cada mão, além das blinds, para engordar o pote." },
-  { term: "Pot-limit (PLO)", def: "A aposta máxima permitida é o tamanho do pote — nunca podes ir all-in acima disso." },
+  { term: "Pot-limit (PLO)", def: "A aposta máxima permitida é o tamanho do pote. Nunca podes ir all-in acima disso." },
   { term: "All-in", def: "Apostar todas as fichas que tens." },
-  { term: "Pot odds", def: "Relação entre o que custa pagar e o tamanho do pote — ajuda a decidir se vale a pena pagar." },
+  { term: "Pot odds", def: "Relação entre o que custa pagar e o tamanho do pote, para decidir se vale a pena pagar." },
   { term: "Side pot (pote lateral)", def: "Pote extra criado quando alguém vai all-in por menos do que os outros apostam." },
   { term: "Run It Twice", def: "Em all-in, completar o board duas vezes e dividir o pote ao meio entre os dois resultados." },
-  { term: "Rabbit Hunt", def: "Depois de alguém desistir, ver que cartas viriam a seguir — só por curiosidade." },
-  { term: "Posição (BTN/SB/BB/UTG/CO/HJ)", def: "Onde estás sentado em relação ao dealer — jogar em posição tardia (BTN/CO) dá vantagem." },
-  { term: "VPIP", def: "% de mãos em que um jogador voluntariamente entra no pote — mede o quão \"solto\" joga." },
+  { term: "Rabbit Hunt", def: "Depois de alguém desistir, ver que cartas viriam a seguir, só por curiosidade." },
+  { term: "Posição (BTN/SB/BB/UTG/CO/HJ)", def: "Onde estás sentado em relação ao dealer. Jogar em posição tardia (BTN/CO) dá vantagem." },
+  { term: "VPIP", def: "% de mãos em que um jogador voluntariamente entra no pote, medindo o quão \"solto\" joga." },
 ];
 
 export function Glossary({ open, onClose }: { open: boolean; onClose: () => void }) {

@@ -77,7 +77,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             <div className="divide-y divide-white/5">
               <Toggle
                 label="Baralho de 4 cores"
-                desc="Ouros a azul, paus a verde — leitura rápida dos naipes"
+                desc="Ouros a azul, paus a verde, para uma leitura rápida dos naipes"
                 value={settings.fourColorDeck}
                 onChange={set("fourColorDeck")}
               />
@@ -132,7 +132,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               />
               <Toggle
                 label="Modo rápido"
-                desc="Animações a 2x — para grinders"
+                desc="Animações a 2x, para grinders"
                 value={settings.fastMode}
                 onChange={set("fastMode")}
               />
