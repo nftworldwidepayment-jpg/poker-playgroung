@@ -64,14 +64,28 @@ export function useRoom(code: string, youId?: string | null) {
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "players", filter: `room_id=eq.${roomId}` },
-          async () => {
-            const { data } = await sb
-              .from("players")
-              .select("*")
-              .eq("room_id", roomId)
-              .neq("status", "left")
-              .order("seat", { ascending: true });
-            setPlayers((data || []) as unknown as PlayerRow[]);
+          (payload) => {
+            // Aplicar o payload do evento diretamente em vez de refazer um
+            // select completo: uma ação numa mesa cheia reescreve várias
+            // linhas de jogadores, e cada UPDATE disparava aqui um fetch de
+            // TODOS os jogadores — numa mesa de 9 eram até 9 round-trips à
+            // base de dados por cada jogada, a principal causa de o jogo
+            // parecer "travado". O payload já traz a linha completa.
+            const row = payload.new as unknown as PlayerRow;
+            if (payload.eventType === "DELETE") {
+              const old = payload.old as { id?: string };
+              if (old?.id) setPlayers((cur) => cur.filter((p) => p.id !== old.id));
+              return;
+            }
+            if (!row?.id) return;
+            setPlayers((cur) => {
+              if (row.status === "left") return cur.filter((p) => p.id !== row.id);
+              const idx = cur.findIndex((p) => p.id === row.id);
+              if (idx === -1) return [...cur, row].sort((a, b) => a.seat - b.seat);
+              const next = [...cur];
+              next[idx] = row;
+              return next;
+            });
           }
         )
         .on("presence", { event: "sync" }, () => {

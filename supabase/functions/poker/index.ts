@@ -242,6 +242,27 @@ Deno.serve(async (req) => {
         // is a bot's, and the decision itself runs entirely server-side, so a client
         // triggering this early/often can't gain any information or edge.
         const code = String(body.code || "").trim().toUpperCase();
+        // Pré-verificação leve: os clientes fazem nudge disto com frequência e
+        // na maioria das vezes não há nada para fazer — carregar o contexto
+        // completo (sala + jogadores + hole cards) em cada nudge era carga
+        // inútil constante na base de dados.
+        const db0 = admin();
+        const { data: lite } = await db0
+          .from("rooms")
+          .select("id, status, current_turn_seat")
+          .eq("code", code)
+          .single();
+        if (!lite) return json({ error: "Sala não encontrada" }, 404);
+        if (lite.status !== "playing" || lite.current_turn_seat == null) return json({ ok: false });
+        const { data: seatP } = await db0
+          .from("players")
+          .select("is_bot, status")
+          .eq("room_id", lite.id)
+          .eq("seat", lite.current_turn_seat)
+          .neq("status", "left")
+          .maybeSingle();
+        if (!seatP?.is_bot || seatP.status !== "active") return json({ ok: false });
+
         const ctx = await loadCtx(code);
         if (!ctx) return json({ error: "Sala não encontrada" }, 404);
         if (ctx.room.status !== "playing") return json({ ok: false });
@@ -322,6 +343,20 @@ Deno.serve(async (req) => {
 
       case "timeout": {
         const code = String(body.code || "").trim().toUpperCase();
+        // Pré-verificação leve pelo mesmo motivo do bot_tick: cada cliente
+        // chama isto a cada ~1.2s e quase sempre o prazo ainda não expirou.
+        const db0 = admin();
+        const { data: lite } = await db0
+          .from("rooms")
+          .select("status, turn_expires_at")
+          .eq("code", code)
+          .single();
+        if (!lite) return json({ error: "Sala não encontrada" }, 404);
+        if (lite.status === "paused") return json({ ok: false });
+        if (!lite.turn_expires_at || new Date(lite.turn_expires_at).getTime() > Date.now()) {
+          return json({ ok: false });
+        }
+
         const ctx = await loadCtx(code);
         if (!ctx) return json({ error: "Sala não encontrada" }, 404);
         if (ctx.room.status === "paused") return json({ ok: false });

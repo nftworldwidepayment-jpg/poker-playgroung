@@ -21,23 +21,100 @@ export async function loadRoomByCode(code: string) {
   return { room: room as RoomRow, players: (players || []) as PlayerRow[] };
 }
 
+// Campos de jogador que o motor pode alterar — a lista que saveCtx compara e
+// escreve. Manter em sincronia com o update em saveCtx.
+const PLAYER_SAVE_FIELDS = [
+  "chips",
+  "current_bet",
+  "total_bet_hand",
+  "status",
+  "has_acted",
+  "auto_straddle",
+  "wants_sit_out",
+  "last_action_at",
+  "consecutive_timeouts",
+] as const;
+
+// Snapshot dos jogadores tal como saíram da base de dados, para saveCtx só
+// escrever as linhas que o motor realmente alterou. Antes disto, cada ação
+// reescrevia TODOS os jogadores sequencialmente (até 9 round-trips), e cada
+// escrita disparava um evento realtime para todos os clientes — a principal
+// causa da lentidão percebida do jogo.
+const ctxSnapshots = new WeakMap<GameCtx, Map<string, string>>();
+const ctxHoleSnapshots = new WeakMap<GameCtx, string>();
+
+function playerFingerprint(p: PlayerRow): string {
+  return JSON.stringify(PLAYER_SAVE_FIELDS.map((f) => p[f]));
+}
+
 export async function loadCtx(code: string): Promise<GameCtx | null> {
-  const found = await loadRoomByCode(code);
-  if (!found) return null;
   const db = admin();
-  const { data: hcRows } = await db
-    .from("hole_cards")
-    .select("player_id, cards")
-    .eq("room_id", found.room.id);
+  const { data: room } = await db.from("rooms").select("*").eq("code", code.toUpperCase()).single();
+  if (!room) return null;
+  // players e hole_cards em paralelo — só dependem do id da sala
+  const [{ data: players }, { data: hcRows }] = await Promise.all([
+    db
+      .from("players")
+      .select("*")
+      .eq("room_id", room.id)
+      .neq("status", "left")
+      .order("seat", { ascending: true }),
+    db.from("hole_cards").select("player_id, cards").eq("room_id", room.id),
+  ]);
   // deno-lint-ignore no-explicit-any
   const holeCards: Record<string, any> = {};
   for (const row of hcRows || []) holeCards[row.player_id as string] = row.cards;
-  return { room: found.room, players: found.players, holeCards };
+  const ctx: GameCtx = {
+    room: room as RoomRow,
+    players: (players || []) as PlayerRow[],
+    holeCards,
+  };
+  ctxSnapshots.set(ctx, new Map(ctx.players.map((p) => [p.id, playerFingerprint(p)])));
+  ctxHoleSnapshots.set(ctx, JSON.stringify(holeCards));
+  return ctx;
 }
 
 export async function saveCtx(ctx: GameCtx) {
   const db = admin();
   const { room, players, holeCards } = ctx;
+
+  // 1) Jogadores primeiro, todos em paralelo, e só os que mudaram — a linha
+  //    da sala fica para o fim, funcionando como o "commit" que os clientes
+  //    usam para reagir à mudança de vez (assim nunca veem a vez nova antes
+  //    de os stacks estarem atualizados).
+  const snapshots = ctxSnapshots.get(ctx);
+  const dirty = players.filter((p) => !snapshots || snapshots.get(p.id) !== playerFingerprint(p));
+  const playerWrites = dirty.map((p) =>
+    db
+      .from("players")
+      .update({
+        chips: p.chips,
+        current_bet: p.current_bet,
+        total_bet_hand: p.total_bet_hand,
+        status: p.status,
+        has_acted: p.has_acted,
+        auto_straddle: p.auto_straddle,
+        wants_sit_out: p.wants_sit_out,
+        last_action_at: p.last_action_at,
+        consecutive_timeouts: p.consecutive_timeouts,
+      })
+      .eq("id", p.id)
+  );
+
+  // hole_cards só mudam quando uma mão nova é dada (startHand) — em todas as
+  // outras ações o upsert era um round-trip desperdiçado em cada jogada.
+  // Detetado por fingerprint (e não por fase, que falharia quando toda a
+  // gente fica all-in logo nas blinds e a mão salta o preflop inteiro).
+  const holeCardRows = Object.entries(holeCards).map(([pid, cards]) => ({
+    player_id: pid,
+    room_id: room.id,
+    cards,
+  }));
+  const holeChanged = ctxHoleSnapshots.get(ctx) !== JSON.stringify(holeCards);
+  const holeWrite = holeChanged && holeCardRows.length ? [db.from("hole_cards").upsert(holeCardRows)] : [];
+
+  await Promise.all([...playerWrites, ...holeWrite]);
+
   await db
     .from("rooms")
     .update({
@@ -72,32 +149,6 @@ export async function saveCtx(ctx: GameCtx) {
       finish_order: room.finish_order,
     })
     .eq("id", room.id);
-
-  for (const p of players) {
-    await db
-      .from("players")
-      .update({
-        chips: p.chips,
-        current_bet: p.current_bet,
-        total_bet_hand: p.total_bet_hand,
-        status: p.status,
-        has_acted: p.has_acted,
-        auto_straddle: p.auto_straddle,
-        wants_sit_out: p.wants_sit_out,
-        last_action_at: p.last_action_at,
-        consecutive_timeouts: p.consecutive_timeouts,
-      })
-      .eq("id", p.id);
-  }
-
-  const holeCardRows = Object.entries(holeCards).map(([pid, cards]) => ({
-    player_id: pid,
-    room_id: room.id,
-    cards,
-  }));
-  if (holeCardRows.length) {
-    await db.from("hole_cards").upsert(holeCardRows);
-  }
 
   // permanent server-side hand history — the client only keeps the last 5 hands locally.
   // onConflict makes this safe to call repeatedly (e.g. a "show hand" reveal after

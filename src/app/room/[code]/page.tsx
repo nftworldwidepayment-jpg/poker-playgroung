@@ -133,8 +133,11 @@ export default function RoomPage() {
   // bots snap-decide, matching their "calling station" profile.
   useEffect(() => {
     if (!room || room.status !== "playing" || !actorIsBot) return;
-    const base = actorBotDifficulty === "hard" ? 1000 : actorBotDifficulty === "easy" ? 500 : 700;
-    const jitter = actorBotDifficulty === "hard" ? 1300 : 900;
+    // Delays curtos: numa mesa cheia de bots o tempo de "pensar" acumula-se
+    // por cada ação, e o que parecia personalidade tornava-se um jogo
+    // arrastado — meio segundo de pausa já lê como decisão deliberada.
+    const base = actorBotDifficulty === "hard" ? 500 : actorBotDifficulty === "easy" ? 250 : 350;
+    const jitter = actorBotDifficulty === "hard" ? 500 : 350;
     const delay = base + Math.random() * jitter;
     const t = setTimeout(() => {
       api.botTick(code).catch(() => {});
@@ -806,6 +809,26 @@ export default function RoomPage() {
               {players.length} jogador{players.length === 1 ? "" : "es"} na sala. Partilha o código{" "}
               <span className="font-mono text-amber-300">{code}</span>
             </div>
+            {isHost && players.length < room.max_players && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-white/40">+ Bot:</span>
+                {(
+                  [
+                    { id: "easy", label: "Fácil" },
+                    { id: "medium", label: "Médio" },
+                    { id: "hard", label: "Difícil" },
+                  ] as const
+                ).map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => handleAddBot(d.id)}
+                    className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-amber-400/40 text-white/60 hover:text-white transition disabled:opacity-40"
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex items-center gap-3 text-xs">
               {you && room.allow_straddle && (
                 <label className="flex items-center gap-1.5 text-white/50 cursor-pointer">
